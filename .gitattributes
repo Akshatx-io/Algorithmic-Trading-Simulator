@@ -1,0 +1,29 @@
+# Cross-platform line ending consistency.
+# Required so Windows contributors don't accidentally ship CRLF in shell scripts.
+
+* text=auto eol=lf
+
+# Binary or auto-detected — never modify
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.svg    text
+*.h5     binary
+*.onnx   binary
+*.pkl    binary
+
+# Shell + python + docker — always LF
+*.sh         text eol=lf
+*.py         text eol=lf
+*.toml       text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
+Dockerfile   text eol=lf
+
+# Linguist hints — keep the language stats honest on GitHub
+frontend/node_modules/**  linguist-vendored
+frontend/dist/**          linguist-generated
+alembic/versions/**       linguist-generated
+*.log                     linguist-generated

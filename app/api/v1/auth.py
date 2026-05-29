@@ -1,0 +1,152 @@
+"""
+v1 auth router — async SQLAlchemy 2.0 (Phase 2.2).
+
+Token transport (audit 6.8, 3.11):
+- Access: JSON body, held in memory client-side.
+- Refresh: httpOnly cookie scoped to /api/v1/auth, rotated on every refresh.
+- WS: 60s JWT minted by /auth/ws-token, query-string only.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Response, status
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth.dependencies import get_current_user_async
+from app.auth.jwt_handler import TOKEN_TYPE_ACCESS, decode_token
+from app.core.config import settings
+from app.core.database import get_async_db
+from app.core.logger import get_logger
+from app.models.user import User
+from app.schemas.user import UserCreate, UserLogin
+from app.services.auth_service import AuthError, auth_service
+
+logger = get_logger("api.v1.auth")
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+REFRESH_COOKIE = "refresh_token"
+COOKIE_PATH = "/api/v1/auth"
+
+
+class UserPublic(BaseModel):
+    id:         int
+    username:   str
+    balance:    float
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type:   str = "bearer"
+    expires_in:   int = Field(..., description="Access token TTL in seconds")
+    user:         UserPublic
+
+
+class WsTokenResponse(BaseModel):
+    ws_token:   str
+    expires_in: int
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE,
+        value=token,
+        max_age=settings.jwt_refresh_days * 86400,
+        path=COOKIE_PATH,
+        httponly=True,
+        secure=settings.is_production,
+        samesite="lax",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(key=REFRESH_COOKIE, path=COOKIE_PATH)
+
+
+def _token_response(result) -> TokenResponse:
+    return TokenResponse(
+        access_token=result.access_token,
+        expires_in=settings.jwt_access_ttl_minutes * 60,
+        user=UserPublic.model_validate(result.user),
+    )
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    payload: UserCreate,
+    response: Response,
+    db: AsyncSession = Depends(get_async_db),
+) -> TokenResponse:
+    try:
+        result = await auth_service.register(db, payload.username, payload.password)
+    except AuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _set_refresh_cookie(response, result.refresh_token)
+    return _token_response(result)
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(
+    payload: UserLogin,
+    response: Response,
+    db: AsyncSession = Depends(get_async_db),
+) -> TokenResponse:
+    try:
+        result = await auth_service.login(db, payload.username, payload.password)
+    except AuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+    _set_refresh_cookie(response, result.refresh_token)
+    return _token_response(result)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh(
+    response: Response,
+    refresh_token: Optional[str] = Cookie(default=None, alias=REFRESH_COOKIE),
+    db: AsyncSession = Depends(get_async_db),
+) -> TokenResponse:
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+    try:
+        result = await auth_service.refresh(db, refresh_token)
+    except AuthError as exc:
+        _clear_refresh_cookie(response)
+        raise HTTPException(status_code=401, detail=str(exc))
+    _set_refresh_cookie(response, result.refresh_token)
+    return _token_response(result)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    response: Response,
+    refresh_token: Optional[str] = Cookie(default=None, alias=REFRESH_COOKIE),
+    authorization: Optional[str] = Header(default=None),
+) -> Response:
+    jti: Optional[str] = None
+    if authorization and authorization.lower().startswith("bearer "):
+        payload = decode_token(authorization[7:], expected_type=TOKEN_TYPE_ACCESS)
+        if payload:
+            jti = payload.get("jti")
+    await auth_service.logout(refresh_token=refresh_token, access_jti=jti)
+    _clear_refresh_cookie(response)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/ws-token", response_model=WsTokenResponse)
+async def issue_ws_token(user: User = Depends(get_current_user_async)) -> WsTokenResponse:
+    return WsTokenResponse(
+        ws_token=auth_service.issue_ws_token(user.id),
+        expires_in=settings.jwt_ws_ttl_seconds,
+    )
+
+
+@router.get("/me", response_model=UserPublic)
+async def me(user: User = Depends(get_current_user_async)) -> UserPublic:
+    return UserPublic.model_validate(user)

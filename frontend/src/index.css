@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.ticker{
+
+  white-space: nowrap;
+  overflow: hidden;
+  background: black;
+  color: lime;
+  padding: 10px;
+
+}
+
+.ticker span{
+
+  margin-right: 40px;
+  animation: scroll 20s linear infinite;
+
+}
+
+@keyframes scroll{
+
+  from { transform: translateX(100%) }
+  to { transform: translateX(-100%) }
+
+}
+
+.ticker {
+
+  width: 100%;
+  background: #111;
+  color: #00ff9c;
+  padding: 6px 10px;
+  font-size: 14px;
+  overflow: hidden;
+  white-space: nowrap;
+
+}
+
+.ticker span {
+
+  margin-right: 30px;
+
+}
