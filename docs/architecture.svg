@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-label="Algorithmic Trading Simulator — system architecture">
+  <title>Algorithmic Trading Simulator — System Architecture</title>
+  <desc>Six-layer architecture: Browser, Nginx, REST/WebSocket API, Service layer, Domain/Repository/Event-bus, and persistence/engines.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <style>
+      .ttl   { font: 700 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+      .sub   { font: 400 11.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #94a3b8; }
+      .lbl   { font: 500 11px   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #94a3b8; }
+      .hero  { font: 700 22px   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #e2e8f0; }
+      .tagline { font: 400 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #64748b; }
+      .box   { fill: url(#card); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="760" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <text x="600" y="44" text-anchor="middle" class="hero">System Architecture</text>
+  <text x="600" y="64" text-anchor="middle" class="tagline">Five-layer backend  ·  async event bus  ·  topic-routed WebSocket  ·  Zustand + TanStack Query frontend</text>
+
+  <!-- =============== ROW 1 — Browser =============== -->
+  <g>
+    <rect x="430" y="100" width="340" height="78" rx="12" class="box" stroke="#22d3ee" stroke-width="1.5"/>
+    <text x="600" y="128" text-anchor="middle" class="ttl" fill="#22d3ee">Browser</text>
+    <text x="600" y="148" text-anchor="middle" class="sub">React 19  ·  Vite 7  ·  Tailwind 3</text>
+    <text x="600" y="166" text-anchor="middle" class="sub">Zustand (client state)  ·  TanStack Query (server state)</text>
+  </g>
+
+  <!-- arrow Browser -> Nginx -->
+  <line x1="600" y1="178" x2="600" y2="218" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="615" y="200" class="lbl">HTTPS / WSS</text>
+
+  <!-- =============== ROW 2 — Nginx =============== -->
+  <g>
+    <rect x="480" y="220" width="240" height="58" rx="12" class="box" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="600" y="246" text-anchor="middle" class="ttl" fill="#cbd5e1">Nginx</text>
+    <text x="600" y="265" text-anchor="middle" class="sub">TLS termination  ·  WebSocket upgrade</text>
+  </g>
+
+  <!-- arrows Nginx -> REST + WS -->
+  <line x1="540" y1="278" x2="370" y2="320" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="660" y1="278" x2="830" y2="320" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- =============== ROW 3 — REST | WS =============== -->
+  <g>
+    <rect x="200" y="320" width="280" height="78" rx="12" class="box" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="340" y="348" text-anchor="middle" class="ttl" fill="#a855f7">FastAPI REST</text>
+    <text x="340" y="368" text-anchor="middle" class="sub">/api/v1/auth · /portfolio · /trades</text>
+    <text x="340" y="386" text-anchor="middle" class="sub">/market · /signals · /analytics</text>
+  </g>
+  <g>
+    <rect x="720" y="320" width="280" height="78" rx="12" class="box" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="860" y="348" text-anchor="middle" class="ttl" fill="#a855f7">FastAPI WebSocket</text>
+    <text x="860" y="368" text-anchor="middle" class="sub">/api/v1/ws — versioned envelope</text>
+    <text x="860" y="386" text-anchor="middle" class="sub">topic subscriptions · heartbeats</text>
+  </g>
+
+  <!-- arrows REST -> Services, WS -> Bus -->
+  <line x1="340" y1="398" x2="500" y2="440" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="860" y1="398" x2="940" y2="540" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- =============== ROW 4 — Service Layer =============== -->
+  <g>
+    <rect x="360" y="440" width="480" height="78" rx="12" class="box" stroke="#34d399" stroke-width="1.5"/>
+    <text x="600" y="468" text-anchor="middle" class="ttl" fill="#34d399">Service Layer</text>
+    <text x="600" y="487" text-anchor="middle" class="sub">orchestration  ·  transaction boundaries  ·  emit events post-commit</text>
+    <text x="600" y="505" text-anchor="middle" class="sub">auth  ·  order  ·  portfolio  ·  risk  ·  analytics  ·  idempotency</text>
+  </g>
+
+  <!-- arrows Services -> Domain / Repos / Bus -->
+  <line x1="430" y1="518" x2="250" y2="560" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="600" y1="518" x2="600" y2="560" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="770" y1="518" x2="940" y2="560" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- =============== ROW 5 — Domain | Repositories | EventBus =============== -->
+  <g>
+    <rect x="90" y="560" width="280" height="78" rx="12" class="box" stroke="#34d399" stroke-width="1.5"/>
+    <text x="230" y="588" text-anchor="middle" class="ttl" fill="#34d399">Domain</text>
+    <text x="230" y="608" text-anchor="middle" class="sub">FIFO PnL  ·  order state machine</text>
+    <text x="230" y="626" text-anchor="middle" class="sub">risk rules  ·  signal scoring</text>
+  </g>
+  <g>
+    <rect x="460" y="560" width="280" height="78" rx="12" class="box" stroke="#34d399" stroke-width="1.5"/>
+    <text x="600" y="588" text-anchor="middle" class="ttl" fill="#34d399">Repositories</text>
+    <text x="600" y="608" text-anchor="middle" class="sub">SQLAlchemy 2.0 async</text>
+    <text x="600" y="626" text-anchor="middle" class="sub">UnitOfWork  ·  typed CRUD</text>
+  </g>
+  <g>
+    <rect x="830" y="560" width="280" height="78" rx="12" class="box" stroke="#f43f5e" stroke-width="1.5"/>
+    <text x="970" y="588" text-anchor="middle" class="ttl" fill="#f43f5e">Event Bus</text>
+    <text x="970" y="608" text-anchor="middle" class="sub">in-process asyncio</text>
+    <text x="970" y="626" text-anchor="middle" class="sub">PriceTicked · OrderFilled · ...</text>
+  </g>
+
+  <!-- arrows from row 5 to row 6 -->
+  <line x1="600" y1="638" x2="450" y2="680" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="970" y1="638" x2="750" y2="680" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- engines feed back into the bus -->
+  <line x1="1050" y1="680" x2="1050" y2="640" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="1050" y1="640" x2="1110" y2="640" stroke="#64748b" stroke-width="1.6"/>
+  <line x1="1110" y1="640" x2="1110" y2="599" stroke="#64748b" stroke-width="1.6"/>
+  <line x1="1110" y1="599" x2="1110" y2="599" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- =============== ROW 6 — Postgres | Redis | Engines =============== -->
+  <g>
+    <rect x="310" y="680" width="280" height="62" rx="12" class="box" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="450" y="706" text-anchor="middle" class="ttl" fill="#f59e0b">PostgreSQL 16</text>
+    <text x="450" y="726" text-anchor="middle" class="sub">users · orders · trades · positions · equity</text>
+  </g>
+  <g>
+    <rect x="610" y="680" width="280" height="62" rx="12" class="box" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="750" y="706" text-anchor="middle" class="ttl" fill="#f59e0b">Redis 7</text>
+    <text x="750" y="726" text-anchor="middle" class="sub">refresh tokens · cache · idempotency · pub/sub</text>
+  </g>
+  <g>
+    <rect x="910" y="680" width="280" height="62" rx="12" class="box" stroke="#f43f5e" stroke-width="1.5"/>
+    <text x="1050" y="706" text-anchor="middle" class="ttl" fill="#f43f5e">Background Engines</text>
+    <text x="1050" y="726" text-anchor="middle" class="sub">market feed · candles · signals · matcher</text>
+  </g>
+
+  <!-- Legend (bottom-left) -->
+  <g transform="translate(40, 100)">
+    <text class="lbl" fill="#475569" x="0" y="0">LAYERS</text>
+    <g transform="translate(0, 14)">
+      <rect width="10" height="10" rx="2" fill="#22d3ee"/><text class="lbl" x="18" y="9">UI / Edge</text>
+    </g>
+    <g transform="translate(0, 32)">
+      <rect width="10" height="10" rx="2" fill="#a855f7"/><text class="lbl" x="18" y="9">API</text>
+    </g>
+    <g transform="translate(0, 50)">
+      <rect width="10" height="10" rx="2" fill="#34d399"/><text class="lbl" x="18" y="9">Service / Domain</text>
+    </g>
+    <g transform="translate(0, 68)">
+      <rect width="10" height="10" rx="2" fill="#f59e0b"/><text class="lbl" x="18" y="9">Persistence</text>
+    </g>
+    <g transform="translate(0, 86)">
+      <rect width="10" height="10" rx="2" fill="#f43f5e"/><text class="lbl" x="18" y="9">Infra / Async</text>
+    </g>
+  </g>
+</svg>

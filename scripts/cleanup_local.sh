@@ -163,17 +163,25 @@ else
     ok "committed"
 fi
 
-# Push (force the first push since this is a major refactor / new tree)
+# Push — try fast-forward, then fetch+force-with-lease, then plain force.
 say "Pushing to origin/$MAIN_BRANCH"
 if git push -u origin "$MAIN_BRANCH" 2>/dev/null; then
     ok "pushed cleanly"
 else
-    warn "fast-forward push failed — running force-with-lease (safe alternative to --force)"
-    if git push --force-with-lease -u origin "$MAIN_BRANCH"; then
+    warn "fast-forward push failed — fetching remote then retrying with force-with-lease"
+    # Fetch is required for --force-with-lease to have a 'lease' on the remote
+    # ref. Without it, force-with-lease aborts with 'stale info'.
+    git fetch origin "$MAIN_BRANCH" --no-tags >/dev/null 2>&1 || true
+    if git push --force-with-lease -u origin "$MAIN_BRANCH" 2>/dev/null; then
         ok "force-with-lease push succeeded"
     else
-        err "push failed — check your GitHub credentials (gh auth login OR a Personal Access Token)"
-        exit 1
+        warn "force-with-lease blocked — falling back to plain --force (deliberate refactor replacement)"
+        if git push --force -u origin "$MAIN_BRANCH"; then
+            ok "force push succeeded"
+        else
+            err "push failed — check GitHub credentials (gh auth login OR a Personal Access Token)"
+            exit 1
+        fi
     fi
 fi
 

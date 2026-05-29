@@ -84,38 +84,44 @@ This is the discipline that separates a portfolio project from a defensible engi
 
 ## Architecture at a glance
 
+<p align="center">
+  <img src="./docs/architecture.svg" alt="Algorithmic Trading Simulator — system architecture diagram showing the six-layer stack from Browser through Nginx, REST and WebSocket APIs, Service Layer, Domain/Repositories/Event Bus, down to PostgreSQL, Redis, and the background engines." width="100%"/>
+</p>
+
+The full sequence diagram for one complete trade — browser `POST` → idempotency check → UoW transaction → event emit → WebSocket fan-out → TanStack Query invalidation — lives in [`ARCHITECTURE.md` §12](./ARCHITECTURE.md).
+
+<details>
+<summary><b>View the same diagram as Mermaid source</b> (for editing / forking)</summary>
+
 ```mermaid
 flowchart TB
-    classDef ui fill:#1e293b,stroke:#475569,color:#e2e8f0
-    classDef api fill:#0f172a,stroke:#334155,color:#22d3ee
-    classDef service fill:#0f172a,stroke:#334155,color:#a855f7
-    classDef store fill:#0f172a,stroke:#334155,color:#34d399
-    classDef infra fill:#0f172a,stroke:#334155,color:#f59e0b
+    Browser["Browser — React 19 + Vite<br/>Zustand + TanStack Query"]
+    Nginx["Nginx<br/>TLS + WebSocket upgrade"]
+    REST["FastAPI REST<br/>/api/v1/*"]
+    WS["FastAPI WebSocket<br/>/api/v1/ws"]
+    Services["Service Layer<br/>auth, order, portfolio, risk"]
+    Domain["Domain<br/>FIFO PnL, state machine, risk rules"]
+    Repos["Repositories<br/>SQLAlchemy 2.0 async"]
+    Bus["In-process Event Bus<br/>PriceTicked, OrderFilled, ..."]
+    Engines["Background Engines<br/>market feed, candles, signals, matcher"]
+    Postgres[("PostgreSQL 16")]
+    Redis[("Redis 7")]
 
-    Browser["React + Vite<br/>Zustand · TanStack Query"]:::ui
-    Nginx["Nginx<br/>TLS · WS upgrade"]:::ui
-
-    Browser -- HTTPS / WSS --> Nginx
-    Nginx --> REST["FastAPI REST API<br/>/api/v1/*"]:::api
-    Nginx --> WS["FastAPI WebSocket<br/>/api/v1/ws"]:::api
-
-    REST --> Services["Service Layer<br/>order · portfolio · auth · risk"]:::service
-    WS   --> EventBus
-
-    Services --> Domain["Domain<br/>FIFO PnL · state machine · risk rules"]:::service
-    Services --> Repos["Repositories<br/>SQLAlchemy 2.0 async"]:::service
-    Repos --> Postgres[("PostgreSQL 16<br/>users · orders · trades<br/>positions · equity")]:::store
-    Services --> Redis[("Redis 7<br/>refresh tokens · cache<br/>idempotency · pub/sub")]:::store
-
-    EventBus["In-process Event Bus<br/>PriceTicked · OrderFilled · ..."]:::infra
-    Engines["Background Engines<br/>market feed · candles · signals · matcher"]:::infra
-
-    Engines --> EventBus
-    EventBus --> WS
-    EventBus --> Repos
+    Browser --> Nginx
+    Nginx --> REST
+    Nginx --> WS
+    REST --> Services
+    WS --> Bus
+    Services --> Domain
+    Services --> Repos
+    Services --> Bus
+    Repos --> Postgres
+    Services --> Redis
+    Engines --> Bus
+    Bus --> WS
 ```
 
-The full sequence diagram for one complete trade — browser POST → idempotency check → UoW transaction → event emit → WebSocket fan-out → TanStack Query invalidation — lives in [ARCHITECTURE.md §12](./ARCHITECTURE.md).
+</details>
 
 ---
 
