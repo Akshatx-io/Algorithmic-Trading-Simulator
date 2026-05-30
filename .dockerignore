@@ -87,12 +87,12 @@ site/
 *~
 .directory
 
-# Documentation files only relevant on the repo side
+# Documentation files only relevant on the repo side.
+# NOTE: README.md and LICENSE MUST stay included — hatchling reads them via
+# pyproject.toml's `readme = "README.md"` directive during `pip install -e .`.
 AUDIT.md
 ARCHITECTURE.md
 ROADMAP.md
-README.md
-LICENSE
 CONTRIBUTING.md
 Makefile
 
