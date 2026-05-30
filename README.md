@@ -88,24 +88,21 @@ This is the discipline that separates a portfolio project from a defensible engi
   <img src="./docs/architecture.svg" alt="Algorithmic Trading Simulator — system architecture diagram showing the six-layer stack from Browser through Nginx, REST and WebSocket APIs, Service Layer, Domain/Repositories/Event Bus, down to PostgreSQL, Redis, and the background engines." width="100%"/>
 </p>
 
-The full sequence diagram for one complete trade — browser `POST` → idempotency check → UoW transaction → event emit → WebSocket fan-out → TanStack Query invalidation — lives in [`ARCHITECTURE.md` §12](./ARCHITECTURE.md).
-
-<details>
-<summary><b>View the same diagram as Mermaid source</b> (for editing / forking)</summary>
+The same architecture, rendered live as a Mermaid graph (works inside GitHub, VS Code, and any markdown viewer):
 
 ```mermaid
 flowchart TB
-    Browser["Browser — React 19 + Vite<br/>Zustand + TanStack Query"]
-    Nginx["Nginx<br/>TLS + WebSocket upgrade"]
-    REST["FastAPI REST<br/>/api/v1/*"]
-    WS["FastAPI WebSocket<br/>/api/v1/ws"]
-    Services["Service Layer<br/>auth, order, portfolio, risk"]
-    Domain["Domain<br/>FIFO PnL, state machine, risk rules"]
-    Repos["Repositories<br/>SQLAlchemy 2.0 async"]
-    Bus["In-process Event Bus<br/>PriceTicked, OrderFilled, ..."]
-    Engines["Background Engines<br/>market feed, candles, signals, matcher"]
-    Postgres[("PostgreSQL 16")]
-    Redis[("Redis 7")]
+    Browser[Browser - React 19 Vite Zustand TanStack Query]
+    Nginx[Nginx TLS WebSocket upgrade]
+    REST[FastAPI REST api v1]
+    WS[FastAPI WebSocket api v1 ws]
+    Services[Service Layer auth order portfolio risk]
+    Domain[Domain FIFO PnL state machine risk rules]
+    Repos[Repositories SQLAlchemy 2.0 async]
+    Bus[In-process Event Bus]
+    Engines[Background Engines market feed candles signals matcher]
+    Postgres[(PostgreSQL 16)]
+    Redis[(Redis 7)]
 
     Browser --> Nginx
     Nginx --> REST
@@ -121,7 +118,7 @@ flowchart TB
     Bus --> WS
 ```
 
-</details>
+The full sequence diagram for one complete trade — browser `POST` → idempotency check → UoW transaction → event emit → WebSocket fan-out → TanStack Query invalidation — lives in [`ARCHITECTURE.md` §12](./ARCHITECTURE.md).
 
 ---
 
