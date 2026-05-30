@@ -14,8 +14,11 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# NOTE: `/lib/` and `/lib64/` are root-anchored so they only match Python
+# venv lib directories at the repo root — NOT `frontend/src/lib/` which
+# is a legitimate source directory (TanStack Query client lives there).
+/lib/
+/lib64/
 parts/
 sdist/
 var/
