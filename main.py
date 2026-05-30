@@ -112,27 +112,49 @@ async def _supervise(name: str, coro_fn: Callable[[], Awaitable[Any]]) -> None:
 async def lifespan(app: FastAPI):
     logger.info("[startup] HFT platform starting (env=%s)", settings.environment)
 
+    # ---------------------------------------------------------------------
+    # Test environment short-circuit
+    # ---------------------------------------------------------------------
+    # In ENVIRONMENT=test (CI + local pytest), the conftest provides its
+    # own in-memory SQLite and overrides DB dependencies. We skip the
+    # production startup probes (real DB + Redis ping + background engines)
+    # because those rely on infra the tests don't intend to exercise.
+    if settings.is_test:
+        logger.info("[startup] test environment — skipping infra probes and engines")
+        app.state.engine_tasks = []
+        try:
+            yield
+        finally:
+            logger.info("[shutdown] complete (test)")
+        return
+
+    # ---------------------------------------------------------------------
+    # Database
     # Phase 2.2: `Base.metadata.create_all` is no longer called at startup
     # (audit 6.2). Alembic migrations are the source of truth — run
-    # `alembic upgrade head` before deploy. In tests, conftest still uses
-    # `create_tables` against an in-memory SQLite.
+    # `alembic upgrade head` before deploy.
+    # ---------------------------------------------------------------------
     await asyncio.to_thread(init_database)
     if not await check_database_connection():
         raise RuntimeError("Database connectivity check failed")
     logger.info("[startup] database ready")
     if settings.is_development and settings.database_url.startswith("sqlite"):
-        # Dev convenience only: bootstrap the schema if running against the
-        # local SQLite file without alembic.
+        # Dev convenience: bootstrap schema for the local SQLite file
+        # without forcing the developer to run alembic.
         await asyncio.to_thread(create_tables)
         logger.info("[startup] dev SQLite schema ensured")
 
-    # Redis — required by auth_service (refresh-token store) and by Phase 2.4+
-    # for idempotency + Phase 2.5 for pub/sub. Fail fast if misconfigured.
+    # ---------------------------------------------------------------------
+    # Redis — required by auth_service (refresh-token store) and by
+    # Phase 2.4+ for idempotency, Phase 2.5+ for pub/sub.
+    # ---------------------------------------------------------------------
     if not await init_redis():
         raise RuntimeError("Redis connectivity check failed")
     logger.info("[startup] redis ready")
 
-    # Background engines — Phase 2.5 will move these to a structured supervisor
+    # ---------------------------------------------------------------------
+    # Background engines (Phase 2.5 moves these to a structured supervisor)
+    # ---------------------------------------------------------------------
     tasks: List[asyncio.Task] = [
         asyncio.create_task(_supervise("market_feed",  start_market_data_engine)),
         asyncio.create_task(_supervise("candle",       start_candle_engine)),
