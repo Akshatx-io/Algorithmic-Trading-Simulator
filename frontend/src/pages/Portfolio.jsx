@@ -1,253 +1,57 @@
-// import { useState, useEffect } from "react";
-// import { useNavigate } from "react-router-dom";
-
-// import usePortfolio from "../hooks/usePortfolio";
-// import useMarket from "../hooks/useMarket";
-
-// import AllocationPie from "../components/charts/AllocationPie";
-// import PositionsTable from "../components/trading/PositionsTable";
-// import StockDetailsPanel from "../components/trading/StockDetailsPanel";
-// import LoadingSpinner from "../components/common/LoadingSpinner";
-// import ErrorMessage from "../components/common/ErrorMessage";
-
-// const Portfolio = () => {
-//   const navigate = useNavigate();
-//   const portfolio = usePortfolio();
-//   const market = useMarket();
-
-//   const [selectedPosition, setSelectedPosition] = useState(null);
-//   const [refreshing, setRefreshing] = useState(false);
-
-//   // Extract positions from portfolio data
-//   const positions = portfolio?.portfolio?.positions || [];
-
-//   // 🔥 Merge live market data with portfolio positions
-//   const mergedPositions = positions.map((pos) => {
-//     const live = market.find((m) => m.symbol === pos.symbol);
-
-//     // Use live price if available, otherwise fallback to position data
-//     const currentPrice = live?.price ?? pos.current_price ?? pos.avg_price ?? 0;
-//     const marketValue = pos.quantity * currentPrice;
-//     const pnl = (currentPrice - pos.avg_price) * pos.quantity;
-//     const pnlPercentage = pos.avg_price > 0 ? ((currentPrice - pos.avg_price) / pos.avg_price) * 100 : 0;
-
-//     return {
-//       ...pos,
-//       current_price: currentPrice,
-//       market_value: marketValue,
-//       pnl: pnl,
-//       pnl_percentage: pnlPercentage,
-//       // ✅ USE BACKEND SIGNAL if available, otherwise default to HOLD
-//       signal: pos.signal ?? "HOLD",
-//       // Add live data indicators
-//       is_live: live !== undefined,
-//       last_update: live?.timestamp || pos.updated_at
-//     };
-//   });
-
-//   // Auto-select first position when data loads
-//   useEffect(() => {
-//     if (!selectedPosition && mergedPositions.length > 0) {
-//       setSelectedPosition(mergedPositions[0]);
-//     }
-//   }, [mergedPositions, selectedPosition]);
-
-//   // Handle manual refresh
-//   const handleRefresh = async () => {
-//     setRefreshing(true);
-//     try {
-//       await portfolio.refresh();
-//     } catch (error) {
-//       console.error("Refresh failed:", error);
-//     } finally {
-//       setRefreshing(false);
-//     }
-//   };
-
-//   // Handle position selection
-//   const handlePositionSelect = (position) => {
-//     setSelectedPosition(position);
-//   };
-
-//   // Loading state
-//   if (portfolio.loading && !portfolio.portfolio) {
-//     return (
-//       <div className="flex items-center justify-center min-h-[400px]">
-//         <LoadingSpinner />
-//       </div>
-//     );
-//   }
-
-//   // Error state
-//   if (portfolio.error) {
-//     return (
-//       <div className="p-6">
-//         <ErrorMessage
-//           message={`Failed to load portfolio: ${portfolio.error}`}
-//           onRetry={handleRefresh}
-//         />
-//       </div>
-//     );
-//   }
-
-//   // Empty portfolio state
-//   if (!portfolio.portfolio || positions.length === 0) {
-//     return (
-//       <div className="p-6">
-//         <div className="bg-gray-900 rounded-xl p-8 text-center">
-//           <h3 className="text-xl font-semibold text-white mb-4">
-//             No Positions Yet
-//           </h3>
-//           <p className="text-gray-400 mb-6">
-//             Start trading to build your portfolio. Your positions and performance will appear here.
-//           </p>
-//           <button
-//             onClick={() => navigate('/trade')}
-//             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-//           >
-//             Start Trading
-//           </button>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   const totalEquity = portfolio.portfolio.total_equity || 0;
-//   const totalPnl = portfolio.portfolio.total_pnl || 0;
-//   const pnlPercentage = portfolio.portfolio.pnl_percentage || 0;
-
-//   return (
-//     <div className="p-6 space-y-6">
-
-//       {/* Header with Portfolio Summary */}
-//       <div className="bg-gray-900 rounded-xl p-6">
-//         <div className="flex justify-between items-start mb-4">
-//           <h1 className="text-2xl font-bold text-white">Portfolio</h1>
-//           <button
-//             onClick={handleRefresh}
-//             disabled={refreshing}
-//             className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-//           >
-//             {refreshing ? "Refreshing..." : "Refresh"}
-//           </button>
-//         </div>
-
-//         {/* Key Metrics */}
-//         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//           <div className="bg-gray-800 p-4 rounded-lg">
-//             <p className="text-gray-400 text-sm">Total Equity</p>
-//             <p className="text-2xl font-semibold text-white">
-//               ${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-//             </p>
-//           </div>
-
-//           <div className="bg-gray-800 p-4 rounded-lg">
-//             <p className="text-gray-400 text-sm">Total P&L</p>
-//             <p className={`text-2xl font-semibold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-//               ${totalPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-//             </p>
-//           </div>
-
-//           <div className="bg-gray-800 p-4 rounded-lg">
-//             <p className="text-gray-400 text-sm">P&L %</p>
-//             <p className={`text-2xl font-semibold ${pnlPercentage >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-//               {pnlPercentage >= 0 ? '+' : ''}{pnlPercentage.toFixed(2)}%
-//             </p>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Main Content */}
-//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-//         {/* Left Side - Charts and Table */}
-//         <div className="lg:col-span-2 space-y-6">
-
-//           {/* Allocation Pie Chart */}
-//           <div className="bg-gray-900 rounded-xl p-6">
-//             <h3 className="text-lg font-semibold text-white mb-4">Asset Allocation</h3>
-//             <AllocationPie
-//               positions={mergedPositions}
-//               onSelect={handlePositionSelect}
-//             />
-//           </div>
-
-//           {/* Positions Table */}
-//           <div className="bg-gray-900 rounded-xl p-6">
-//             <h3 className="text-lg font-semibold text-white mb-4">Positions</h3>
-//             <PositionsTable
-//               positions={mergedPositions}
-//               onSelect={handlePositionSelect}
-//               selectedPosition={selectedPosition}
-//             />
-//           </div>
-
-//         </div>
-
-//         {/* Right Side - Stock Details */}
-//         <div className="lg:col-span-1">
-//           <StockDetailsPanel position={selectedPosition} />
-//         </div>
-
-//       </div>
-
-//     </div>
-//   );
-// };
-
-// export default Portfolio;
-
-
-
-
-
-
-
-
-
-
-
-
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { RefreshCw, RotateCcw, Wallet, TrendingUp, Banknote, Percent } from "lucide-react";
 
 import usePortfolio from "../hooks/usePortfolio";
 import useMarket from "../hooks/useMarket";
 
 import AllocationPie from "../components/charts/AllocationPie";
-import PositionsTable from "../components/trading/PositionsTable";
 import StockDetailsPanel from "../components/trading/StockDetailsPanel";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import ErrorMessage from "../components/common/ErrorMessage";
+import StatCard from "../components/ui/StatCard";
+import Card, { CardHeader } from "../components/ui/Card";
+import Badge from "../components/ui/Badge";
 import apiClient from "../services/apiClient";
 import { resetAccount } from "../services/portfolioService";
+import { formatCurrency } from "../utils/formatCurrency";
 
-const Portfolio = () => {
+const num = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+export default function Portfolio() {
   const navigate = useNavigate();
-  const portfolio = usePortfolio();
+  const { portfolio, loading, error, refresh } = usePortfolio();
   const market = useMarket();
 
   const [selectedSymbol, setSelectedSymbol] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [marketSnapshot, setMarketSnapshot] = useState({});
   const [signalSnapshot, setSignalSnapshot] = useState({});
 
-  const positions = portfolio?.portfolio?.positions || [];
+  const positions = useMemo(
+    () => portfolio?.positions || [],
+    [portfolio]
+  );
 
-  const safeNum = (v) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
-  };
+  // Stable key so the snapshot poller only re-subscribes when the symbol set changes.
+  const symbolsKey = useMemo(
+    () => [...new Set(positions.map((p) => p.symbol).filter(Boolean))].sort().join(","),
+    [positions]
+  );
 
-  // Pull authoritative quotes and signal confidence snapshots to avoid stale/flickering table values.
+  // Authoritative quote + signal snapshots (avoid raw WS flicker in the table).
   useEffect(() => {
-    if (!positions.length) return;
+    if (!symbolsKey) return;
+    const symbols = symbolsKey.split(",");
     let mounted = true;
-    const symbols = [...new Set(positions.map((p) => p.symbol).filter(Boolean))];
 
-    const refreshSnapshots = async () => {
+    const tick = async () => {
       try {
-        const [marketResults, signalRes] = await Promise.all([
+        const [quotes, signalRes] = await Promise.all([
           Promise.all(
             symbols.map((s) =>
               apiClient.get(`/market/${s}`).then((r) => r.data).catch(() => null)
@@ -255,221 +59,224 @@ const Portfolio = () => {
           ),
           apiClient.get("/signals").then((r) => r.data).catch(() => null),
         ]);
-
         if (!mounted) return;
-
         const nextMarket = {};
-        marketResults.forEach((row) => {
-          if (!row?.symbol) return;
-          nextMarket[row.symbol] = safeNum(row.price);
-        });
+        quotes.forEach((row) => row?.symbol && (nextMarket[row.symbol] = num(row.price)));
         setMarketSnapshot(nextMarket);
-
         const nextSignals = {};
         (signalRes?.signals || []).forEach((sig) => {
-          if (!sig?.symbol) return;
-          nextSignals[sig.symbol] = {
-            signal: sig.signal || "HOLD",
-            confidence: safeNum(sig.confidence),
-          };
+          if (sig?.symbol) {
+            nextSignals[sig.symbol] = { signal: sig.signal || "HOLD", confidence: num(sig.confidence) };
+          }
         });
         setSignalSnapshot(nextSignals);
       } catch {
-        // Keep last stable snapshots on transient failures.
+        /* keep last good snapshot */
       }
     };
 
-    refreshSnapshots();
-    const id = setInterval(refreshSnapshots, 5000);
+    tick();
+    const id = setInterval(tick, 5000);
     return () => {
       mounted = false;
       clearInterval(id);
     };
-  }, [positions]);
+  }, [symbolsKey]);
 
-  // ✅ O(1) lookup map
   const marketMap = useMemo(() => {
     const map = {};
-    market.forEach((m) => {
-      map[m.symbol] = m;
-    });
+    (Array.isArray(market) ? market : []).forEach((m) => m?.symbol && (map[m.symbol] = m));
     return map;
   }, [market]);
 
-  // ✅ MEMOIZED MERGE (NO RECOMPUTE)
-  const mergedPositions = useMemo(() => {
+  const merged = useMemo(() => {
     return positions.map((pos) => {
       const live = marketMap[pos.symbol];
-
-      const quantity = safeNum(pos.quantity);
-      const avgPrice = safeNum(pos.avg_price);
-      // Deterministic price source: authoritative API snapshot first; avoid raw WS flicker.
-      const price = safeNum(
-        marketSnapshot[pos.symbol] ?? pos.current_price ?? pos.avg_price
-      );
-      const signalInfo = signalSnapshot[pos.symbol];
-      const rawSignal = live?.signal ?? signalInfo?.signal ?? pos.signal ?? "HOLD";
-      const confidence = safeNum(signalInfo?.confidence);
-      const heuristicSignal =
-        ((price - avgPrice) / Math.max(avgPrice, 1e-9)) * 100 > 0.3
-          ? "BUY"
-          : ((price - avgPrice) / Math.max(avgPrice, 1e-9)) * 100 < -0.3
-          ? "SELL"
-          : "HOLD";
-      const signal =
-        rawSignal && rawSignal !== "HOLD"
-          ? rawSignal
-          : confidence > 0
-          ? rawSignal
-          : heuristicSignal;
-
+      const quantity = num(pos.quantity);
+      const avgPrice = num(pos.avg_price);
+      const price = num(marketSnapshot[pos.symbol] ?? pos.current_price ?? pos.avg_price);
+      const info = signalSnapshot[pos.symbol];
+      const signal = live?.signal ?? info?.signal ?? pos.signal ?? "HOLD";
+      const pnl = (price - avgPrice) * quantity;
       return {
         ...pos,
         quantity,
         avg_price: avgPrice,
         current_price: price,
         market_value: quantity * price,
-        pnl: (price - avgPrice) * quantity,
-        pnl_percentage:
-          avgPrice > 0
-            ? ((price - avgPrice) / avgPrice) * 100
-            : 0,
+        pnl,
+        pnl_percentage: avgPrice > 0 ? ((price - avgPrice) / avgPrice) * 100 : 0,
         signal,
-        signal_confidence: confidence,
+        signal_confidence: num(info?.confidence),
         candles: Array.isArray(live?.candles) ? live.candles : [],
-        is_live: !!live,
       };
     });
   }, [positions, marketMap, marketSnapshot, signalSnapshot]);
 
-  // ✅ stable selection
-  useEffect(() => {
-    if (!selectedSymbol && mergedPositions.length > 0) {
-      setSelectedSymbol(mergedPositions[0].symbol);
-    }
-  }, [mergedPositions, selectedSymbol]);
+  const selected = useMemo(() => {
+    if (!merged.length) return null;
+    return merged.find((p) => p.symbol === selectedSymbol) || merged[0];
+  }, [merged, selectedSymbol]);
 
-  const selectedPosition = useMemo(() => {
-    if (!mergedPositions.length) return null;
-    return (
-      mergedPositions.find((p) => p.symbol === selectedSymbol) || mergedPositions[0]
-    );
-  }, [mergedPositions, selectedSymbol]);
+  const totals = useMemo(() => {
+    const p = portfolio || {};
+    const marketValue = merged.reduce((a, x) => a + num(x.market_value), 0);
+    const unrealized = merged.reduce((a, x) => a + num(x.pnl), 0);
+    const equity = num(p.total_equity || marketValue);
+    const cash = num(p.cash_balance);
+    const totalPnl = num(p.total_pnl ?? unrealized + num(p.realized_pnl));
+    const invested = equity - unrealized;
+    const pct = invested > 0 ? (unrealized / invested) * 100 : 0;
+    return { equity, cash, unrealized, totalPnl, pct };
+  }, [portfolio, merged]);
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    await portfolio.refresh().catch(() => {});
-    setRefreshing(false);
+    setBusy(true);
+    await refresh?.().catch(() => {});
+    setBusy(false);
   };
 
   const handleReset = async () => {
-    const ok = window.confirm(
-      "Reset account? This permanently clears all positions, trades, and history, and restores your starting balance."
-    );
-    if (!ok) return;
-    setRefreshing(true);
+    if (!window.confirm("Reset account? This permanently clears all positions, trades, and history, and restores your starting balance.")) {
+      return;
+    }
+    setBusy(true);
     try {
       await resetAccount();
       setSelectedSymbol(null);
-      await portfolio.refresh().catch(() => {});
+      await refresh?.().catch(() => {});
+      toast.success("Account reset to starting balance");
+    } catch {
+      toast.error("Reset failed");
     } finally {
-      setRefreshing(false);
+      setBusy(false);
     }
   };
 
-  const totals = useMemo(() => {
-    const p = portfolio.portfolio || {};
-    const marketValue = mergedPositions.reduce((acc, pos) => acc + safeNum(pos.market_value), 0);
-    const unrealized = mergedPositions.reduce((acc, pos) => acc + safeNum(pos.pnl), 0);
-    const realized = safeNum(p.realized_pnl);
-    const totalPnl = safeNum(p.total_pnl || unrealized + realized);
-    const equity = safeNum(p.total_equity || marketValue);
-    const pct =
-      equity > 0
-        ? (totalPnl / Math.max(equity - totalPnl, 1e-9)) * 100
-        : 0;
-    return { equity, totalPnl, pct };
-  }, [portfolio.portfolio, mergedPositions]);
-
-  if (portfolio.loading && !portfolio.portfolio) {
-    return <LoadingSpinner />;
-  }
-
-  if (portfolio.error) {
-    return <ErrorMessage message={portfolio.error} onRetry={handleRefresh} />;
-  }
+  if (loading && !portfolio?.positions?.length && !positions.length) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} onRetry={handleRefresh} />;
 
   if (!positions.length) {
     return (
-      <div className="p-6 text-center">
-        <button onClick={() => navigate("/trade")}>
+      <Card className="card-pad mx-auto max-w-lg text-center">
+        <h3 className="text-lg font-semibold text-white">No positions yet</h3>
+        <p className="mt-1 text-sm text-gray-400">
+          Build your portfolio by placing your first simulated trade.
+        </p>
+        <button
+          onClick={() => navigate("/trade")}
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-white shadow-glow transition hover:opacity-90"
+        >
           Start Trading
         </button>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 max-w-full">
+    <div className="space-y-6">
+      {/* SUMMARY */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Equity" value={formatCurrency(totals.equity)} icon={Wallet} />
+        <StatCard label="Cash" value={formatCurrency(totals.cash)} icon={Banknote} accent="accent" />
+        <StatCard
+          label="Unrealized P&L"
+          value={formatCurrency(totals.unrealized)}
+          tone={totals.unrealized >= 0 ? "up" : "down"}
+          icon={TrendingUp}
+        />
+        <StatCard
+          label="Return"
+          value={`${totals.pct.toFixed(2)}%`}
+          tone={totals.pct >= 0 ? "up" : "down"}
+          icon={Percent}
+          accent="accent"
+        />
+      </div>
 
-      {/* SUMMARY METRICS */}
-      <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Account Summary</h2>
-          <button
-            onClick={handleReset}
-            disabled={refreshing}
-            className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
-          >
-            {refreshing ? "Working..." : "Reset Account"}
-          </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Metric label="Equity" value={totals.equity} />
-          <Metric label="P&L" value={totals.totalPnl} />
-          <Metric label="Return %" value={totals.pct} isPercent />
-        </div>
+      {/* ACTIONS */}
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={handleRefresh}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-lg border border-line bg-ink-800 px-3 py-1.5 text-sm text-gray-300 transition hover:text-white disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={busy ? "animate-spin" : ""} /> Refresh
+        </button>
+        <button
+          onClick={handleReset}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-lg border border-down/40 bg-down/10 px-3 py-1.5 text-sm text-down transition hover:bg-down/20 disabled:opacity-50"
+        >
+          <RotateCcw size={14} /> Reset
+        </button>
       </div>
 
       {/* CONTENT */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-
-        <div className="xl:col-span-2 space-y-6 min-w-0">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+        <div className="min-w-0 space-y-6 xl:col-span-2">
           <AllocationPie
-            positions={mergedPositions}
+            positions={merged}
             onSelect={(pos) => setSelectedSymbol(pos?.symbol || null)}
           />
-          <PositionsTable
-            positions={mergedPositions}
-            onSelect={(pos) => setSelectedSymbol(pos?.symbol || null)}
-            selectedPosition={selectedPosition}
-          />
+
+          <Card>
+            <CardHeader title="Open Positions" subtitle={`${merged.length} holding(s)`} />
+            <div className="overflow-x-auto px-2 pb-2 pt-3">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
+                    <th className="px-3 py-2 font-medium">Symbol</th>
+                    <th className="px-3 py-2 text-right font-medium">Qty</th>
+                    <th className="px-3 py-2 text-right font-medium">Avg</th>
+                    <th className="px-3 py-2 text-right font-medium">Price</th>
+                    <th className="px-3 py-2 text-right font-medium">Value</th>
+                    <th className="px-3 py-2 text-right font-medium">P&L</th>
+                    <th className="px-3 py-2 text-right font-medium">Signal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {merged.map((p) => {
+                    const isSel = selected?.symbol === p.symbol;
+                    return (
+                      <tr
+                        key={p.symbol}
+                        onClick={() => setSelectedSymbol(p.symbol)}
+                        className={`cursor-pointer border-t border-line/60 transition ${
+                          isSel ? "bg-brand-500/10" : "hover:bg-ink-700/40"
+                        }`}
+                      >
+                        <td className="px-3 py-2.5 font-semibold text-white">{p.symbol}</td>
+                        <td className="px-3 py-2.5 text-right tnum text-gray-300">{p.quantity}</td>
+                        <td className="px-3 py-2.5 text-right tnum text-gray-300">{formatCurrency(p.avg_price)}</td>
+                        <td className="px-3 py-2.5 text-right tnum text-gray-300">{formatCurrency(p.current_price)}</td>
+                        <td className="px-3 py-2.5 text-right tnum text-gray-300">{formatCurrency(p.market_value)}</td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className={p.pnl >= 0 ? "text-up tnum" : "text-down tnum"}>
+                            {p.pnl >= 0 ? "+" : ""}
+                            {formatCurrency(p.pnl)}
+                            <span className="ml-1 text-xs text-gray-500">
+                              ({p.pnl_percentage >= 0 ? "+" : ""}
+                              {p.pnl_percentage.toFixed(2)}%)
+                            </span>
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <Badge variant={p.signal}>{p.signal}</Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
 
         <div className="min-w-0">
-          <StockDetailsPanel position={selectedPosition} />
+          <StockDetailsPanel position={selected} />
         </div>
-
       </div>
     </div>
   );
-};
-
-// 🔥 reusable metric component
-const Metric = ({ label, value, isPercent }) => {
-  const formatted = isPercent
-    ? `${value.toFixed(2)}%`
-    : `$${value.toLocaleString()}`;
-
-  const color =
-    value >= 0 ? "text-green-400" : "text-red-400";
-
-  return (
-    <div className="bg-gray-800 p-4 rounded">
-      <p className="text-gray-400">{label}</p>
-      <p className={`${color} text-xl`}>{formatted}</p>
-    </div>
-  );
-};
-
-export default Portfolio;
+}
