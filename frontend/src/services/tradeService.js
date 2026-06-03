@@ -24,7 +24,14 @@ export const executeTrade = async (data) => {
     notify();
     return res.data;
   } catch (err) {
-    throw new Error(err.message || "Trade failed");
+    // Surface the backend's human-readable reason (e.g. "Risk limit exceeded",
+    // "Not enough shares", "Invalid market price") instead of a generic message.
+    const detail =
+      err?.response?.data?.detail ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Trade failed";
+    throw new Error(typeof detail === "string" ? detail : "Trade failed");
   }
 };
 
