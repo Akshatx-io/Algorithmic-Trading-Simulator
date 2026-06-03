@@ -1,21 +1,24 @@
-import { useMemo } from "react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PieChart, Pie, Cell, Tooltip } from "recharts";
 
 /**
- * AllocationPie — donut chart of portfolio allocation by market value.
+ * AllocationPie - donut chart of portfolio allocation by market value.
  *
- * Robustness notes:
- * - The chart lives inside an explicitly-sized box (h-[300px]); recharts 3 +
- *   React 19 will render nothing if the ResponsiveContainer parent has no
- *   resolved height, which was the previous failure mode.
- * - All numeric inputs are coerced defensively; entries with non-positive
- *   value are dropped so the pie geometry never breaks.
+ * Robustness:
+ * - We measure our own container width with a ResizeObserver and render a
+ *   fixed-size <PieChart> only once width > 0. recharts' ResponsiveContainer
+ *   intermittently measures 0 on first mount (the "empty on first visit /
+ *   partial on second visit" bug); self-measuring removes that race.
+ * - Animation is disabled so the ring can never be caught mid-draw.
+ * - All numeric inputs are coerced; non-positive values are dropped.
  */
 
 const COLORS = [
   "#34d399", "#60a5fa", "#f472b6", "#facc15",
   "#a78bfa", "#fb923c", "#22d3ee", "#f87171",
 ];
+
+const CHART_HEIGHT = 240;
 
 const parseNumber = (v) => {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
@@ -33,6 +36,19 @@ const fmtUsd = (n) =>
   })}`;
 
 const AllocationPie = ({ positions, onSelect }) => {
+  const wrapRef = useRef(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => setWidth(Math.floor(el.clientWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const data = useMemo(() => {
     return (Array.isArray(positions) ? positions : [])
       .map((pos) => {
@@ -55,28 +71,34 @@ const AllocationPie = ({ positions, onSelect }) => {
     );
   }
 
+  const chartW = Math.min(width || 0, CHART_HEIGHT);
+  const outer = Math.max(40, Math.min(chartW, CHART_HEIGHT) / 2 - 6);
+  const inner = Math.max(24, outer * 0.62);
+
   return (
     <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
       <h3 className="mb-4 text-lg font-semibold text-white">Asset Allocation</h3>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-center">
-        {/* Chart — explicitly sized box so ResponsiveContainer always measures. */}
-        <div className="relative h-[260px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+        <div
+          ref={wrapRef}
+          className="relative flex w-full items-center justify-center"
+          style={{ height: CHART_HEIGHT }}
+        >
+          {chartW > 0 && (
+            <PieChart width={chartW} height={CHART_HEIGHT}>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius="58%"
-                outerRadius="85%"
+                innerRadius={inner}
+                outerRadius={outer}
                 paddingAngle={2}
-                minAngle={3}
+                minAngle={4}
                 dataKey="value"
                 nameKey="name"
                 stroke="none"
-                isAnimationActive
-                animationDuration={500}
+                isAnimationActive={false}
                 onClick={(entry) =>
                   onSelect?.(entry?.position ?? entry?.payload?.position)
                 }
@@ -99,19 +121,17 @@ const AllocationPie = ({ positions, onSelect }) => {
                 }}
               />
             </PieChart>
-          </ResponsiveContainer>
+          )}
 
-          {/* Center total label */}
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-xs text-gray-400">Total</span>
             <span className="text-lg font-semibold text-white">{fmtUsd(total)}</span>
           </div>
         </div>
 
-        {/* Custom legend with values + share % */}
         <ul className="space-y-2">
           {data.map((entry, index) => {
-            const pct = total > 0 ? (entry.value / total) * 100 : 0;
+            const share = total > 0 ? (entry.value / total) * 100 : 0;
             return (
               <li
                 key={entry.name}
@@ -127,7 +147,7 @@ const AllocationPie = ({ positions, onSelect }) => {
                 </span>
                 <span className="text-sm text-gray-400">
                   {fmtUsd(entry.value)}{" "}
-                  <span className="text-gray-500">({pct.toFixed(1)}%)</span>
+                  <span className="text-gray-500">({share.toFixed(1)}%)</span>
                 </span>
               </li>
             );

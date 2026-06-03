@@ -1,122 +1,129 @@
-import { useLocation, NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Wallet,
+  LineChart,
+  ArrowRightLeft,
+  LogOut,
+  Activity,
+} from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
 import Topbar from "./Topbar";
 
+const NAV = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/portfolio", label: "Portfolio", icon: Wallet },
+  { to: "/performance", label: "Performance", icon: LineChart },
+  { to: "/trade", label: "Trade", icon: ArrowRightLeft },
+];
+
+const TITLES = {
+  "/": "Dashboard",
+  "/portfolio": "Portfolio",
+  "/performance": "Performance",
+  "/trade": "Trade",
+};
+
+const SUBTITLES = {
+  "/": "Your account at a glance",
+  "/portfolio": "Holdings, allocation & positions",
+  "/performance": "Risk-adjusted analytics",
+  "/trade": "Place simulated orders",
+};
+
 export default function DashboardLayout() {
-  // ProtectedRoute already guards this layout — no need for a second redirect
-  // here. We just expose `logout` to the topbar button (audit 3.11).
   const { logout, user } = useAuth();
   const location = useLocation();
-
-  const getPageTitle = () => {
-    switch (location.pathname) {
-      case "/portfolio":   return "Portfolio";
-      case "/performance": return "Performance";
-      case "/trade":       return "Trade";
-      default:             return "Dashboard";
-    }
-  };
+  const title = TITLES[location.pathname] || "Dashboard";
+  const subtitle = SUBTITLES[location.pathname] || "";
+  const initial = (user?.username || "U").charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col lg:flex-row">
-
+    <div className="flex min-h-screen bg-ink-950 text-gray-100">
       {/* Sidebar */}
-      <div className="w-full lg:w-64 lg:min-w-64 bg-gray-900 border-b lg:border-b-0 lg:border-r border-gray-800 p-4 lg:p-6">
-        <h1 className="text-xl font-bold mb-8 tracking-wide text-blue-400">
-            AI Trading Terminal
-        </h1>
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-ink-900/80 lg:flex">
+        <div className="flex items-center gap-2 px-6 py-5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-glow">
+            <Activity size={18} className="text-white" />
+          </span>
+          <div className="leading-tight">
+            <p className="text-sm font-bold text-white">AI Trading</p>
+            <p className="text-xs text-gray-400">Terminal</p>
+          </div>
+        </div>
 
-         <nav className="space-y-2 lg:space-y-3">
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-lg transition ${
-                  isActive
-                    ? "bg-blue-600/80 text-white shadow-md"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                }`
-              }
-            >
-              Dashboard
-            </NavLink>
-
-            <NavLink
-              to="/portfolio"
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-lg transition ${
-                  isActive
-                    ? "bg-blue-600/80 text-white shadow-md"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                }`
-              }
-            >
-              Portfolio
-            </NavLink>
-
-            <NavLink
-              to="/performance"
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-lg transition ${
-                  isActive
-                    ? "bg-blue-600/80 text-white shadow-md"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                }`
-              }
-            >
-              Performance
-            </NavLink>
-
-            <NavLink
-              to="/trade"
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-lg transition ${
-                  isActive
-                    ? "bg-blue-600/80 text-white shadow-md"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                }`
-              }
-            >
-              Trade
-            </NavLink>
+        <nav className="mt-2 flex-1 space-y-1 px-3">
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                    isActive
+                      ? "bg-brand-500/15 text-white ring-1 ring-brand-500/30"
+                      : "text-gray-400 hover:bg-ink-700/60 hover:text-white"
+                  }`
+                }
+              >
+                <Icon size={18} />
+                {item.label}
+              </NavLink>
+            );
+          })}
         </nav>
 
-      </div>
+        <div className="border-t border-line p-3">
+          <div className="flex items-center gap-3 rounded-xl px-3 py-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-sm font-semibold text-white">
+              {initial}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">
+                {user?.username || "Trader"}
+              </p>
+              <p className="text-xs text-gray-500">Paper account</p>
+            </div>
+            <button
+              onClick={() => logout()}
+              title="Log out"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-down/10 hover:text-down"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
+      </aside>
 
-            {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-
-        {/* Topbar with live ticker */}
+      {/* Main column */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
 
-        <div className="p-4 lg:p-8 overflow-x-hidden">
+        <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4 lg:px-8">
+          <div>
+            <h1 className="text-xl font-semibold text-white">{title}</h1>
+            {subtitle && <p className="text-sm text-gray-400">{subtitle}</p>}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm text-gray-400 sm:inline">
+              {user?.username}
+            </span>
+            <button
+              onClick={() => logout()}
+              className="rounded-lg border border-line bg-ink-800 px-3 py-1.5 text-sm text-gray-300 transition hover:border-down/40 hover:text-down"
+            >
+              Logout
+            </button>
+          </div>
+        </header>
 
-            <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-semibold">
-                {getPageTitle()}
-            </h2>
-
-            <div className="flex items-center gap-3">
-              {user?.username && (
-                <span className="text-sm text-gray-400 hidden md:inline">
-                  {user.username}
-                </span>
-              )}
-              <button
-                onClick={() => logout()}
-                className="px-3 py-1.5 text-sm bg-gray-700 rounded transition-all duration-200 hover:bg-blue-500"
-              >
-                Logout
-              </button>
-            </div>
-            </div>
-
-            <Outlet />
-
-        </div>
-
-        </div>
+        <main className="flex-1 overflow-x-hidden bg-grid-faint p-5 lg:p-8" style={{ backgroundSize: "22px 22px" }}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

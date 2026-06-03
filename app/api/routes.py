@@ -43,6 +43,7 @@ from app.execution.execution_engine import execute_trade
 from app.market.fetch_stock_data import fetch_stock_data
 from app.market.market_state import market_state
 from app.models.equity_history import EquityHistory
+from app.models.position import Position
 from app.models.trade import Trade
 from app.models.user import User
 from app.portfolio.equity_engine import get_equity_curve
@@ -86,6 +87,33 @@ def portfolio(
     db: Session = Depends(get_db),
 ):
     return get_total_pnl(db, user.id)
+
+
+@router.post("/account/reset")
+def reset_account(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Reset the caller's paper-trading account to a clean slate:
+    delete all positions, trades, and equity history, and restore the
+    starting cash balance. Idempotent.
+    """
+    db.query(Position).filter(Position.user_id == user.id).delete(synchronize_session=False)
+    db.query(Trade).filter(Trade.user_id == user.id).delete(synchronize_session=False)
+    db.query(EquityHistory).filter(EquityHistory.user_id == user.id).delete(synchronize_session=False)
+
+    user_row = db.query(User).filter(User.id == user.id).first()
+    if user_row is not None:
+        user_row.balance = float(settings.default_user_balance)
+    db.commit()
+
+    logger.info("[account] reset for user=%s -> balance=%.2f", user.id, settings.default_user_balance)
+    return {
+        "status": "success",
+        "message": "Account reset to starting balance.",
+        "balance": float(settings.default_user_balance),
+    }
 
 
 @router.get("/portfolio/history")

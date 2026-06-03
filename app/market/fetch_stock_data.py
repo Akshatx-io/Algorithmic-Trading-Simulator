@@ -41,9 +41,10 @@ from app.core.config import settings
 
 # Realistic-ish anchor prices. Unknown symbols get a deterministic base.
 BASE_PRICES = {
-    "AAPL": 190.0, "MSFT": 420.0, "NVDA": 122.0, "TSLA": 250.0, "AMZN": 185.0,
-    "GOOGL": 175.0, "META": 560.0, "NFLX": 650.0, "AMD": 160.0, "INTC": 35.0,
-    "UBER": 75.0,
+    # Plausible recent levels (simulated anchors — not live quotes).
+    "AAPL": 228.0, "MSFT": 440.0, "NVDA": 135.0, "TSLA": 340.0, "AMZN": 220.0,
+    "GOOGL": 195.0, "META": 720.0, "NFLX": 900.0, "AMD": 165.0, "INTC": 23.0,
+    "UBER": 90.0,
 }
 
 _BUCKET_SECONDS = {

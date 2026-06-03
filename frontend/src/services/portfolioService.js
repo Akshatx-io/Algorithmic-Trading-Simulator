@@ -19,3 +19,8 @@ export const getPortfolio = async () => {
     pnl_percentage: Number(data.pnl_percentage ?? 0),
   };
 };
+
+export const resetAccount = async () => {
+  const res = await apiClient.post("/account/reset");
+  return res.data;
+};

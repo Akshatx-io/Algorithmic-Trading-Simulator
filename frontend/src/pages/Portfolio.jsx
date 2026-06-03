@@ -220,6 +220,7 @@ import StockDetailsPanel from "../components/trading/StockDetailsPanel";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import ErrorMessage from "../components/common/ErrorMessage";
 import apiClient from "../services/apiClient";
+import { resetAccount } from "../services/portfolioService";
 
 const Portfolio = () => {
   const navigate = useNavigate();
@@ -361,6 +362,21 @@ const Portfolio = () => {
     setRefreshing(false);
   };
 
+  const handleReset = async () => {
+    const ok = window.confirm(
+      "Reset account? This permanently clears all positions, trades, and history, and restores your starting balance."
+    );
+    if (!ok) return;
+    setRefreshing(true);
+    try {
+      await resetAccount();
+      setSelectedSymbol(null);
+      await portfolio.refresh().catch(() => {});
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const totals = useMemo(() => {
     const p = portfolio.portfolio || {};
     const marketValue = mergedPositions.reduce((acc, pos) => acc + safeNum(pos.market_value), 0);
@@ -398,6 +414,16 @@ const Portfolio = () => {
 
       {/* SUMMARY METRICS */}
       <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">Account Summary</h2>
+          <button
+            onClick={handleReset}
+            disabled={refreshing}
+            className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+          >
+            {refreshing ? "Working..." : "Reset Account"}
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Metric label="Equity" value={totals.equity} />
           <Metric label="P&L" value={totals.totalPnl} />
