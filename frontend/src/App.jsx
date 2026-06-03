@@ -29,6 +29,7 @@ const Dashboard       = lazy(() => import("./pages/Dashboard"));
 const Portfolio       = lazy(() => import("./pages/Portfolio"));
 const Performance     = lazy(() => import("./pages/Performance"));
 const Trade           = lazy(() => import("./pages/Trade"));
+const Account         = lazy(() => import("./pages/Account"));
 
 // ---- Fallbacks -------------------------------------------------------------
 
@@ -136,6 +137,7 @@ export default function App() {
             <Route path="portfolio"  element={<Portfolio />} />
             <Route path="performance" element={<Performance />} />
             <Route path="trade"      element={<Trade />} />
+            <Route path="account"    element={<Account />} />
           </Route>
 
           {/* Catch-all */}

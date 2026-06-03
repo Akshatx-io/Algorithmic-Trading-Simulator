@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.database import get_async_db
 from app.core.logger import get_logger
 from app.models.user import User
+from app.auth.password import hash_password, verify_password
 from app.schemas.user import UserCreate, UserLogin
 from app.services.auth_service import AuthError, auth_service
 
@@ -36,10 +37,16 @@ COOKIE_PATH = "/api/v1/auth"
 class UserPublic(BaseModel):
     id:         int
     username:   str
+    email:      Optional[str] = None
     balance:    float
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password:     str = Field(..., min_length=1)
 
 
 class TokenResponse(BaseModel):
@@ -150,3 +157,29 @@ async def issue_ws_token(user: User = Depends(get_current_user_async)) -> WsToke
 @router.get("/me", response_model=UserPublic)
 async def me(user: User = Depends(get_current_user_async)) -> UserPublic:
     return UserPublic.model_validate(user)
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    payload: ChangePasswordRequest,
+    user: User = Depends(get_current_user_async),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Change the caller's password after verifying the current one."""
+    row = await db.get(User, user.id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_password(payload.current_password, row.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(payload.new_password) < settings.password_min_length:
+        raise HTTPException(
+            status_code=400,
+            detail=f"New password must be at least {settings.password_min_length} characters",
+        )
+    if verify_password(payload.new_password, row.hashed_password):
+        raise HTTPException(status_code=400, detail="New password must differ from the current one")
+
+    row.hashed_password = hash_password(payload.new_password)
+    await db.commit()
+    logger.info("[auth] password changed for user=%s", user.id)
+    return {"status": "success", "message": "Password updated."}

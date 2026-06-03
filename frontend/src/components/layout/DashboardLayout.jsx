@@ -4,6 +4,7 @@ import {
   Wallet,
   LineChart,
   ArrowRightLeft,
+  Settings,
   LogOut,
   Activity,
 } from "lucide-react";
@@ -16,33 +17,27 @@ const NAV = [
   { to: "/portfolio", label: "Portfolio", icon: Wallet },
   { to: "/performance", label: "Performance", icon: LineChart },
   { to: "/trade", label: "Trade", icon: ArrowRightLeft },
+  { to: "/account", label: "Settings", icon: Settings },
 ];
 
-const TITLES = {
-  "/": "Dashboard",
-  "/portfolio": "Portfolio",
-  "/performance": "Performance",
-  "/trade": "Trade",
-};
-
-const SUBTITLES = {
-  "/": "Your account at a glance",
-  "/portfolio": "Holdings, allocation & positions",
-  "/performance": "Risk-adjusted analytics",
-  "/trade": "Place simulated orders",
+const META = {
+  "/": ["Dashboard", "Your account at a glance"],
+  "/portfolio": ["Portfolio", "Holdings, allocation & positions"],
+  "/performance": ["Performance", "Risk-adjusted analytics"],
+  "/trade": ["Trade", "Place simulated orders"],
+  "/account": ["Account Settings", "Profile, security & preferences"],
 };
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
   const location = useLocation();
-  const title = TITLES[location.pathname] || "Dashboard";
-  const subtitle = SUBTITLES[location.pathname] || "";
+  const [title, subtitle] = META[location.pathname] || ["Dashboard", ""];
   const initial = (user?.username || "U").charAt(0).toUpperCase();
 
   return (
-    <div className="flex min-h-screen bg-ink-950 text-gray-100">
-      {/* Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-ink-900/80 lg:flex">
+    <div className="flex h-screen overflow-hidden bg-ink-950 text-gray-100">
+      {/* Sidebar — full height, never scrolls with content */}
+      <aside className="hidden h-screen w-64 shrink-0 flex-col border-r border-line bg-ink-900/80 lg:flex">
         <div className="flex items-center gap-2 px-6 py-5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-glow">
             <Activity size={18} className="text-white" />
@@ -53,7 +48,7 @@ export default function DashboardLayout() {
           </div>
         </div>
 
-        <nav className="mt-2 flex-1 space-y-1 px-3">
+        <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3">
           {NAV.map((item) => {
             const Icon = item.icon;
             return (
@@ -102,15 +97,13 @@ export default function DashboardLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
 
-        <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4 lg:px-8">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-4 lg:px-8">
           <div>
             <h1 className="text-xl font-semibold text-white">{title}</h1>
             {subtitle && <p className="text-sm text-gray-400">{subtitle}</p>}
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-gray-400 sm:inline">
-              {user?.username}
-            </span>
+            <span className="hidden text-sm text-gray-400 sm:inline">{user?.username}</span>
             <button
               onClick={() => logout()}
               className="rounded-lg border border-line bg-ink-800 px-3 py-1.5 text-sm text-gray-300 transition hover:border-down/40 hover:text-down"
@@ -120,7 +113,10 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden bg-grid-faint p-5 lg:p-8" style={{ backgroundSize: "22px 22px" }}>
+        <main
+          className="flex-1 overflow-y-auto overflow-x-hidden bg-grid-faint p-5 lg:p-8"
+          style={{ backgroundSize: "22px 22px" }}
+        >
           <Outlet />
         </main>
       </div>
