@@ -3,91 +3,46 @@ import { useNavigate } from "react-router-dom";
 import useMarket from "../../hooks/useMarket";
 import CandlestickChart from "../charts/CandlestickChart";
 import AISignalPanel from "./AISignalPanel";
+import Badge from "../ui/Badge";
 import apiClient from "../../services/apiClient";
+import { formatCurrency } from "../../utils/formatCurrency";
 
-// ===============================
-// SIGNAL HELPERS (ELITE)
-// ===============================
-const getSignalColor = (signal) => {
-  if (signal === "BUY") return "text-green-400";
-  if (signal === "SELL") return "text-red-400";
-  return "text-yellow-400";
-};
-
-const getSignalDot = (signal) => {
-  if (signal === "BUY") return "bg-green-400";
-  if (signal === "SELL") return "bg-red-400";
-  return "bg-yellow-400";
-};
-
-// ===============================
-// SAFE NUMBER UTILS
-// ===============================
-const safeNum = (n) => (typeof n === "number" && !isNaN(n) ? n : 0);
+const safeNum = (n) => (typeof n === "number" && !Number.isNaN(n) ? n : 0);
 const hasFiniteNumber = (n) => typeof n === "number" && Number.isFinite(n);
 
-// ===============================
-// MAIN COMPONENT
-// ===============================
-const StockDetailsPanel = ({ position }) => {
+export default function StockDetailsPanel({ position }) {
   const navigate = useNavigate();
   const market = useMarket();
 
   const [timeframe, setTimeframe] = useState("1m");
-
   const [signalData, setSignalData] = useState(null);
   const [loadingSignal, setLoadingSignal] = useState(false);
-  const [signalError, setSignalError] = useState(null);
+  const [signalError] = useState(null);
   const lastSignalErrorLogRef = useRef(0);
-
   const abortRef = useRef(null);
 
   const symbol = position?.symbol;
 
-  // ===============================
-  // LIVE MARKET DATA (MEMOIZED)
-  // ===============================
   const live = useMemo(
-    () => market.find((m) => m.symbol === symbol),
+    () => (Array.isArray(market) ? market.find((m) => m.symbol === symbol) : null),
     [market, symbol]
   );
 
-  const currentPrice = safeNum(
-    position?.current_price ?? live?.price ?? position?.avg_price
-  );
-
+  const currentPrice = safeNum(position?.current_price ?? live?.price ?? position?.avg_price);
   const change = safeNum(live?.change);
   const changePct = safeNum(live?.change_pct);
-
   const quantity = safeNum(position?.quantity);
   const avgPrice = safeNum(position?.avg_price);
-
-  // ===============================
-  // CALCULATIONS (SAFE)
-  // ===============================
   const marketValue = quantity * currentPrice;
   const totalCost = quantity * avgPrice;
-
-  const unrealizedPnl =
-    safeNum(position?.pnl) ||
-    (currentPrice - avgPrice) * quantity;
-
+  const unrealizedPnl = safeNum(position?.pnl) || (currentPrice - avgPrice) * quantity;
   const pnlPercentage =
     safeNum(position?.pnl_percentage) ||
-    (avgPrice > 0
-      ? ((currentPrice - avgPrice) / avgPrice) * 100
-      : 0);
+    (avgPrice > 0 ? ((currentPrice - avgPrice) / avgPrice) * 100 : 0);
 
-  // ===============================
-  // SIGNAL FETCH (PRODUCTION SAFE)
-  // ===============================
   useEffect(() => {
     if (!symbol) return;
-
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-
+    if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -95,7 +50,6 @@ const StockDetailsPanel = ({ position }) => {
       const hasLiveSignal = Boolean(live?.signal);
       const hasPositionSignal = Boolean(position?.signal);
       try {
-        // 🔥 FIRST TRY WS DATA
         if (hasLiveSignal) {
           setSignalData((prev) => ({
             signal: live.signal,
@@ -105,22 +59,13 @@ const StockDetailsPanel = ({ position }) => {
             scores: prev?.scores ?? {},
           }));
         }
-
-        // Only show loader until first successful hydration.
-        if (!signalData) {
-          setLoadingSignal(true);
-        }
-        setSignalError(null);
-
-        const res = await apiClient.get(`/signals/${symbol}`, {
-          signal: controller.signal,
-        });
+        if (!signalData) setLoadingSignal(true);
+        const res = await apiClient.get(`/signals/${symbol}`, { signal: controller.signal });
         setSignalData((prev) => ({
           ...prev,
           ...res.data,
           signal: live?.signal ?? res.data?.signal ?? prev?.signal ?? "HOLD",
         }));
-
       } catch (err) {
         if (err.name !== "AbortError") {
           const now = Date.now();
@@ -128,7 +73,6 @@ const StockDetailsPanel = ({ position }) => {
             console.warn("Signal fetch unavailable, using fallback signal state");
             lastSignalErrorLogRef.current = now;
           }
-          // Keep UI stable with HOLD fallback; avoid transient error banners.
           if (!hasLiveSignal && !hasPositionSignal && !signalData) {
             setSignalData((prev) => prev || { signal: "HOLD", confidence: null });
           }
@@ -139,106 +83,72 @@ const StockDetailsPanel = ({ position }) => {
     };
 
     fetchSignal();
-
     return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, live?.signal]);
 
-  // ===============================
-  // FINAL SIGNAL
-  // ===============================
-  const signal =
-    signalData?.signal ||
-    position?.signal ||
-    live?.signal ||
-    "HOLD";
-
-  const signalColor = getSignalColor(signal);
-  const signalDot = getSignalDot(signal);
-
+  const signal = signalData?.signal || position?.signal || live?.signal || "HOLD";
   const factors = signalData?.factors || {};
-  const scores = signalData?.scores || {};
   const riskMetrics = signalData?.risk_metrics || {};
 
-  // ===============================
-  // EMPTY STATE
-  // ===============================
   if (!position) {
     return (
-      <div className="bg-gray-900 p-6 rounded-xl text-center text-gray-400">
+      <div className="card card-pad text-center text-gray-400">
         Select a position to view details
       </div>
     );
   }
 
-  // ===============================
-  // UI
-  // ===============================
   return (
-    <div className="bg-gray-900 rounded-xl overflow-hidden">
-
+    <div className="card overflow-hidden">
       {/* HEADER */}
-      <div className="p-6 border-b border-gray-800">
-        <div className="flex justify-between items-start">
-
+      <div className="border-b border-line p-5">
+        <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-white">{symbol}</h2>
-
-            <div className="flex items-center gap-3 mt-2">
-              <span className="text-2xl text-white">
-                ${currentPrice.toFixed(2)}
-              </span>
-
-              <span className={change >= 0 ? "text-green-400" : "text-red-400"}>
+            <div className="mt-2 flex items-center gap-3">
+              <span className="text-2xl font-semibold tnum text-white">{formatCurrency(currentPrice)}</span>
+              <span className={`tnum ${change >= 0 ? "text-up" : "text-down"}`}>
                 {change >= 0 ? "+" : ""}
                 {change.toFixed(2)} ({changePct.toFixed(2)}%)
               </span>
             </div>
           </div>
-
           <button
             onClick={() => navigate("/trade")}
-            className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white"
+            className="rounded-lg bg-brand-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:opacity-90"
           >
             Trade
           </button>
         </div>
 
-        {/* SIGNAL DISPLAY */}
         <div className="mt-4 flex items-center gap-3">
-
-          <div className={`w-3 h-3 rounded-full ${signalDot}`} />
-
-          <span className={`font-semibold ${signalColor}`}>
-            {signal}
-          </span>
-
+          <Badge variant={signal}>{signal}</Badge>
           {hasFiniteNumber(signalData?.confidence) && (
-            <span className="text-gray-400 text-sm">
-              {signalData.confidence.toFixed(1)}%
-            </span>
+            <span className="text-sm text-gray-400">{signalData.confidence.toFixed(1)}% confidence</span>
           )}
         </div>
       </div>
 
       {/* POSITION DATA */}
-      <div className="p-4 grid grid-cols-2 gap-4 text-sm">
-        <Stat label="Shares" value={quantity} />
+      <div className="grid grid-cols-2 gap-4 p-5 text-sm">
+        <Stat label="Shares" value={quantity} raw />
         <Stat label="Avg Price" value={avgPrice} />
         <Stat label="Market Value" value={marketValue} />
         <Stat label="Total Cost" value={totalCost} />
       </div>
 
       {/* PNL */}
-      <div className="p-4 border-t border-gray-800">
+      <div className="border-t border-line p-5">
         <div className="flex justify-between">
           <span className="text-gray-400">Unrealized P&L</span>
-
           <div className="text-right">
-            <div className={unrealizedPnl >= 0 ? "text-green-400" : "text-red-400"}>
-              ${unrealizedPnl.toFixed(2)}
+            <div className={`tnum ${unrealizedPnl >= 0 ? "text-up" : "text-down"}`}>
+              {unrealizedPnl >= 0 ? "+" : ""}
+              {formatCurrency(unrealizedPnl)}
             </div>
-
-            <div className={pnlPercentage >= 0 ? "text-green-400" : "text-red-400"}>
+            <div className={`tnum text-sm ${pnlPercentage >= 0 ? "text-up" : "text-down"}`}>
+              {pnlPercentage >= 0 ? "+" : ""}
               {pnlPercentage.toFixed(2)}%
             </div>
           </div>
@@ -246,32 +156,29 @@ const StockDetailsPanel = ({ position }) => {
       </div>
 
       {/* TIMEFRAME */}
-      <div className="p-4 border-t border-gray-800 flex gap-2">
-        {["1m", "5m", "15m"].map((tf) => (
-          <button
-            key={tf}
-            onClick={() => setTimeframe(tf)}
-            className={`px-3 py-1 rounded ${
-              timeframe === tf
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300"
-            }`}
-          >
-            {tf}
-          </button>
-        ))}
+      <div className="flex gap-1 border-t border-line p-5 pb-0">
+        <div className="flex gap-1 rounded-xl bg-ink-900 p-1">
+          {["1m", "5m", "15m"].map((tf) => (
+            <button
+              key={tf}
+              onClick={() => setTimeframe(tf)}
+              className={`rounded-lg px-3 py-1 text-sm font-medium transition ${
+                timeframe === tf ? "bg-ink-700 text-white ring-1 ring-line" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {tf}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* CHART */}
-      <div className="p-4">
-        <CandlestickChart
-          symbol={symbol}
-          timeframe={timeframe}
-        />
+      <div className="p-5">
+        <CandlestickChart symbol={symbol} timeframe={timeframe} />
       </div>
 
       {/* AI PANEL */}
-      <div className="p-4 border-t border-gray-800">
+      <div className="border-t border-line p-5">
         <AISignalPanel
           signal={signal}
           confidence={signalData?.confidence}
@@ -282,52 +189,48 @@ const StockDetailsPanel = ({ position }) => {
 
       {/* FACTORS */}
       {signalData && (
-        <div className="p-4 border-t border-gray-800 space-y-4">
-
+        <div className="space-y-4 border-t border-line p-5">
           <Section title="Trading Factors">
             <GridStat label="Trend" value={factors.trend} />
             <GridStat label="Momentum" value={factors.momentum} />
             <GridStat label="Volatility" value={factors.volatility} />
           </Section>
-
           <Section title="Risk Metrics">
             <GridStat label="Sharpe" value={riskMetrics.sharpe_ratio} />
             <GridStat label="Drawdown" value={riskMetrics.max_drawdown} />
             <GridStat label="Volatility" value={riskMetrics.volatility} />
           </Section>
-
         </div>
       )}
     </div>
   );
-};
+}
 
-// ===============================
-// SUB COMPONENTS
-// ===============================
-const Stat = ({ label, value }) => (
-  <div>
-    <p className="text-gray-400">{label}</p>
-    <p className="text-white">{Number(value).toFixed(2)}</p>
-  </div>
-);
-
-const GridStat = ({ label, value }) => (
-  <div className="bg-gray-800 p-3 rounded">
-    <div className="text-gray-400 text-xs">{label}</div>
-    <div className="text-white">
-      {typeof value === "number"
-        ? (value * 100).toFixed(1) + "%"
-        : "N/A"}
+function Stat({ label, value, raw }) {
+  return (
+    <div>
+      <p className="text-gray-400">{label}</p>
+      <p className="tnum text-white">{raw ? Number(value) : formatCurrency(Number(value))}</p>
     </div>
-  </div>
-);
+  );
+}
 
-const Section = ({ title, children }) => (
-  <div>
-    <h4 className="text-white mb-2">{title}</h4>
-    <div className="grid grid-cols-2 gap-3">{children}</div>
-  </div>
-);
+function GridStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-line/70 bg-ink-900/60 p-3">
+      <div className="text-xs text-gray-400">{label}</div>
+      <div className="tnum text-white">
+        {typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "N/A"}
+      </div>
+    </div>
+  );
+}
 
-export default StockDetailsPanel;
+function Section({ title, children }) {
+  return (
+    <div>
+      <h4 className="mb-2 text-sm font-medium text-white">{title}</h4>
+      <div className="grid grid-cols-2 gap-3">{children}</div>
+    </div>
+  );
+}

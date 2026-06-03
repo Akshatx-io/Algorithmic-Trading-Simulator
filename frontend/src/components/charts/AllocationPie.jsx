@@ -65,7 +65,7 @@ const AllocationPie = ({ positions, onSelect }) => {
 
   if (data.length === 0) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-gray-800 bg-gray-900 p-6 text-center text-gray-400">
+      <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-line bg-ink-800 p-6 text-center text-gray-400">
         Allocation appears once positions have a market value.
       </div>
     );
@@ -76,7 +76,7 @@ const AllocationPie = ({ positions, onSelect }) => {
   const inner = Math.max(24, outer * 0.62);
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+    <div className="card card-pad">
       <h3 className="mb-4 text-lg font-semibold text-white">Asset Allocation</h3>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-center">
@@ -136,7 +136,7 @@ const AllocationPie = ({ positions, onSelect }) => {
               <li
                 key={entry.name}
                 onClick={() => onSelect?.(entry.position)}
-                className="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 hover:bg-gray-800"
+                className="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 hover:bg-ink-700/60"
               >
                 <span className="flex items-center gap-2 text-sm text-gray-200">
                   <span

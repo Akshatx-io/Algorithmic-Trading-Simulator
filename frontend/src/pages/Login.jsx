@@ -1,14 +1,7 @@
-/**
- * Login page.
- *
- * Uses the Zustand-backed authService.login(), which writes the access
- * token + user into the store. ProtectedRoute / PublicOnlyRoute observe
- * the store and redirect reactively (audit 3.11).
- */
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { Activity, Loader2 } from "lucide-react";
 
 import { login as apiLogin } from "../services/authService";
 
@@ -17,80 +10,82 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
 
   async function handleLogin(e) {
     e.preventDefault();
     if (loading) return;
-
     setError("");
     setLoading(true);
-
     try {
       await apiLogin({ username: username.trim(), password });
       toast.success("Welcome back");
       navigate("/", { replace: true });
     } catch (err) {
-      const msg =
-        err?.message ||
-        err?.data?.detail ||
-        "Invalid credentials";
-      setError(msg);
+      setError(err?.message || err?.data?.detail || "Invalid credentials");
     } finally {
       setLoading(false);
     }
   }
 
+  const inputCls =
+    "w-full rounded-lg border border-line bg-ink-900 px-3 py-2.5 text-sm text-white outline-none transition focus:border-brand-500/60 focus:ring-2 focus:ring-brand-500/20";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950">
-      <form
-        onSubmit={handleLogin}
-        className="bg-slate-900 p-8 rounded-xl w-96 shadow-lg border border-slate-800"
-      >
-        <h2 className="text-2xl mb-6 text-white font-semibold">Sign in</h2>
+    <div className="flex min-h-screen items-center justify-center bg-ink-950 bg-grid-faint p-4" style={{ backgroundSize: "22px 22px" }}>
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-gradient shadow-glow">
+            <Activity size={22} className="text-white" />
+          </span>
+          <h1 className="text-xl font-bold text-white">AI Trading Terminal</h1>
+          <p className="text-sm text-gray-400">Sign in to your paper account</p>
+        </div>
 
-        {error && (
-          <p className="text-red-400 text-sm mb-4 bg-red-950/40 border border-red-900 rounded px-3 py-2">
-            {error}
+        <form onSubmit={handleLogin} className="card card-pad space-y-4">
+          {error && (
+            <p className="rounded-lg border border-down/30 bg-down/10 px-3 py-2 text-sm text-down">
+              {error}
+            </p>
+          )}
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-gray-400">Username</label>
+            <input
+              type="text"
+              autoComplete="username"
+              className={inputCls}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-gray-400">Password</label>
+            <input
+              type="password"
+              autoComplete="current-password"
+              className={inputCls}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gradient py-2.5 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-50"
+          >
+            {loading && <Loader2 size={16} className="animate-spin" />}
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+          <p className="text-center text-sm text-gray-400">
+            New here?{" "}
+            <Link to="/register" className="text-brand-400 hover:text-brand-300">
+              Create an account
+            </Link>
           </p>
-        )}
-
-        <label className="block text-xs uppercase text-slate-400 mb-1">Username</label>
-        <input
-          type="text"
-          autoComplete="username"
-          className="w-full mb-4 p-2 rounded bg-slate-800 text-white border border-slate-700 focus:border-blue-500 focus:outline-none"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-
-        <label className="block text-xs uppercase text-slate-400 mb-1">Password</label>
-        <input
-          type="password"
-          autoComplete="current-password"
-          className="w-full mb-6 p-2 rounded bg-slate-800 text-white border border-slate-700 focus:border-blue-500 focus:outline-none"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 bg-blue-600 rounded font-medium hover:bg-blue-500 disabled:opacity-50 transition"
-        >
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-
-        <p className="text-sm text-slate-400 mt-4 text-center">
-          New here?{" "}
-          <Link to="/register" className="text-blue-400 hover:text-blue-300">
-            Create an account
-          </Link>
-        </p>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }
