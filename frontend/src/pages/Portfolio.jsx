@@ -396,14 +396,12 @@ const Portfolio = () => {
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-full">
 
-      {/* HEADER */}
-      <div className="bg-gray-900 p-6 rounded-xl">
-        <h1 className="text-white text-2xl">Portfolio</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      {/* SUMMARY METRICS */}
+      <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Metric label="Equity" value={totals.equity} />
           <Metric label="P&L" value={totals.totalPnl} />
-          <Metric label="%" value={totals.pct} isPercent />
+          <Metric label="Return %" value={totals.pct} isPercent />
         </div>
       </div>
 

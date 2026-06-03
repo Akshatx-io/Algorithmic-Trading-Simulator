@@ -34,17 +34,16 @@ const usePortfolio = () => {
         throw new Error("Invalid portfolio response");
       }
 
-      // 🔥 NORMALIZED STRUCTURE (CRITICAL)
+      // Normalized flat structure (matches portfolioService output).
       setPortfolio({
         positions: res.positions || [],
         total_equity: res.total_equity || 0,
-        total_pnl: res.summary?.total_pnl || 0,
-        unrealized_pnl: res.summary?.unrealized_pnl || 0,
-        realized_pnl: res.summary?.realized_pnl || 0,
-        pnl_percentage:
-          res.total_equity > 0
-            ? (res.summary?.total_pnl || 0) / res.total_equity
-            : 0,
+        cash_balance: res.cash_balance || 0,
+        market_value: res.market_value || 0,
+        total_pnl: res.total_pnl || 0,
+        unrealized_pnl: res.unrealized_pnl || 0,
+        realized_pnl: res.realized_pnl || 0,
+        pnl_percentage: res.pnl_percentage || 0,
       });
 
       setError(null);

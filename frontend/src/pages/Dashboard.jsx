@@ -22,7 +22,6 @@ import { useMemo } from "react";
 
 import EquityChart       from "../components/charts/EquityChart";
 import LoadingSpinner    from "../components/common/LoadingSpinner";
-import useMarket         from "../hooks/useMarket";
 import usePerformance    from "../hooks/usePerformance";
 import usePortfolio      from "../hooks/usePortfolio";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -55,7 +54,6 @@ function MetricCard({ title, value, highlight }) {
 
 export default function Dashboard() {
   const { portfolio, loading, error } = usePortfolio();
-  const market = useMarket();
   const perf   = usePerformance();
 
   const { positions, equity, pnl, unrealized, realized } = useMemo(() => {
@@ -75,9 +73,7 @@ export default function Dashboard() {
   if (error)   return <div className="p-6 text-red-400">{error}</div>;
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-white text-2xl">Dashboard</h1>
-
+    <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard title="Equity"     value={equity} />
         <MetricCard title="PnL"        value={pnl}        highlight />
@@ -86,15 +82,7 @@ export default function Dashboard() {
         <MetricCard title="Sharpe"     value={sharpe} />
       </div>
 
-      <div className="bg-gray-900 p-4 rounded-xl flex gap-4 overflow-x-auto">
-        {market.map((m) => (
-          <div key={m.symbol} className="text-white whitespace-nowrap">
-            {m.symbol}: ${safeNumber(m.price).toFixed(2)}
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-gray-900 p-4 rounded-xl">
+      <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
         <EquityChart />
       </div>
 

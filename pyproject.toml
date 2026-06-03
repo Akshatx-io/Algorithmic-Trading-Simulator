@@ -17,7 +17,7 @@ name = "hft-platform"
 version = "0.2.0"
 description = "Production-grade quantitative trading platform simulator."
 readme = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
 authors = [{ name = "Akki", email = "cakshatn11@gmail.com" }]
 keywords = ["trading", "quant", "fastapi", "websocket", "fintech"]
@@ -53,6 +53,8 @@ dependencies = [
 
     # Cache + pub/sub + idempotency store
     "redis[hiredis]>=5.2.0,<6",
+    # In-memory Redis-compatible fallback for local dev / CI (no external infra)
+    "fakeredis>=2.23.0,<3",
 
     # Auth: pyjwt over python-jose (better maintained, audit 3.7)
     "pyjwt[crypto]>=2.10.0,<3",

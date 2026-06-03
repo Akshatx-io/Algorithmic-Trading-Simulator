@@ -34,6 +34,7 @@ from app.market.fetch_stock_data import fetch_stock_data
 from app.market.market_state import market_state
 from app.models.position import Position
 from app.models.trade import Trade
+from app.models.user import User
 
 logger = get_logger("pnl_engine")
 
@@ -169,17 +170,34 @@ def calculate_realized_pnl(db: Session, user_id: int) -> float:
 # -----------------------------------------------------------------------------
 # Aggregate
 # -----------------------------------------------------------------------------
-def get_total_pnl(db: Session, user_id: int) -> Dict[str, Union[str, list, dict]]:
+def get_total_pnl(db: Session, user_id: int) -> Dict[str, Union[str, float, list, dict]]:
     unrealized_positions = calculate_unrealized_pnl(db, user_id)
     realized_pnl         = calculate_realized_pnl(db, user_id)
     total_unrealized     = sum(p["unrealized_pnl"] for p in unrealized_positions)
+    market_value         = sum(p["market_value"] for p in unrealized_positions)
 
+    user = db.query(User).filter(User.id == user_id).first()
+    cash_balance = float(user.balance) if user and user.balance is not None else 0.0
+    total_equity = cash_balance + market_value
+    invested = total_equity - total_unrealized  # cost basis of equity
+    total_pnl = total_unrealized + realized_pnl
+    pnl_percentage = (total_unrealized / invested * 100.0) if invested > 0 else 0.0
+
+    # Flat keys are the canonical contract consumed by the frontend; `summary`
+    # is retained for backward compatibility with any older caller.
     return {
-        "status":    "success",
-        "positions": unrealized_positions,
+        "status":         "success",
+        "positions":      unrealized_positions,
+        "cash_balance":   cash_balance,
+        "market_value":   market_value,
+        "total_equity":   total_equity,
+        "realized_pnl":   realized_pnl,
+        "unrealized_pnl": total_unrealized,
+        "total_pnl":      total_pnl,
+        "pnl_percentage": pnl_percentage,
         "summary": {
             "realized_pnl":   realized_pnl,
             "unrealized_pnl": total_unrealized,
-            "total_pnl":      total_unrealized + realized_pnl,
+            "total_pnl":      total_pnl,
         },
     }

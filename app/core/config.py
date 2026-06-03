@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     redis_url:       Optional[str] = "redis://localhost:6379/0"
     redis_cache_ttl: int = 300                  # seconds
+    # When true (or when a real Redis is unreachable in non-production), the
+    # app uses an in-process fakeredis client so it runs with zero external
+    # infra. Never honored in production (see redis_client.init_redis).
+    use_fake_redis:  bool = False
 
     # -------------------------------------------------------------------------
     # User defaults
@@ -109,6 +113,12 @@ class Settings(BaseSettings):
     market_data_refresh_interval: int = 2       # seconds between price polls
     market_data_cache_ttl:        int = 5       # seconds for per-(symbol,interval) cache
     max_symbols:                  int = 50
+    # Simulator default: serve a deterministic 24/7 synthetic market so prices
+    # never flicker or depend on exchange hours / provider rate limits. Set to
+    # False to prefer the live yfinance provider (with synthetic fallback).
+    use_synthetic_market:         bool = True
+    # Cadence for periodic account-equity snapshots (drives the equity curve).
+    equity_snapshot_interval:     int = 15
 
     # External provider keys (optional — synthetic provider used when absent)
     alpha_vantage_api_key: Optional[str] = None

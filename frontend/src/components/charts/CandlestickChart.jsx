@@ -81,7 +81,11 @@ export default function CandlestickChart({ symbol, timeframe = "1m" }) {
     const fetchCandles = async () => {
       setLoading(true);
       try {
-        const res = await apiClient.get(`/candles/${symbol}?timeframe=${timeframe}`);
+        // Always fetch the 1m base series; the displayed interval is derived
+        // client-side via aggregateCandles(). This keeps 1m/5m/15m perfectly
+        // consistent with the selected timeframe label regardless of what the
+        // provider returns or falls back to.
+        const res = await apiClient.get(`/candles/${symbol}?timeframe=1m`);
         const normalized = removeOutlierCandles(
           normalizeCandles(res?.data?.candles)
         );
@@ -99,7 +103,7 @@ export default function CandlestickChart({ symbol, timeframe = "1m" }) {
       mounted = false;
       clearInterval(id);
     };
-  }, [symbol, timeframe]);
+  }, [symbol]);
 
   const candles = useMemo(
     () => aggregateCandles(baseCandles, timeframe),
@@ -183,7 +187,7 @@ export default function CandlestickChart({ symbol, timeframe = "1m" }) {
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-white font-medium">{symbol} ({timeframe})</h3>
         <div className="text-right">
-          <div className="text-white text-lg">₹{lastPrice.toFixed(2)}</div>
+          <div className="text-white text-lg">${lastPrice.toFixed(2)}</div>
           <div className={change >= 0 ? "text-green-400" : "text-red-400"}>
             {change >= 0 ? "+" : ""}
             {change.toFixed(2)} ({changePct.toFixed(2)}%)

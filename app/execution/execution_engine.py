@@ -233,14 +233,20 @@ def execute_trade(db: Session, user_id: int, request):
     # COMMIT (ATOMIC)
     # ============================
     db.commit()
+    # Refresh to populate DB-generated fields (id, timestamp) for the response.
+    db.refresh(trade)
 
     logger.info(f"Trade executed: {symbol} {action} {quantity}")
 
     return {
         "success": True,
-        "symbol": symbol,
-        "action": action,
-        "price": price,
-        "quantity": quantity,
-        "balance": user.balance
+        "id": trade.id,
+        "symbol": trade.symbol,
+        "action": trade.action,
+        "quantity": trade.quantity,
+        "price": trade.price,
+        "timestamp": trade.timestamp,
+        "status": "FILLED",
+        "realized_pnl": trade.realized_pnl,
+        "balance": user.balance,
     }

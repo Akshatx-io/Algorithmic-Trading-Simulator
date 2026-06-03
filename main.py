@@ -53,6 +53,7 @@ from app.infra.redis_client import close_redis, init_redis
 # Engines — TODO Phase 2.5: replace direct imports with EngineSupervisor.register()
 from app.market.candle_engine import start_candle_engine
 from app.market.market_data_engine import start_market_data_engine
+from app.portfolio.equity_snapshot_engine import start_equity_snapshot_engine
 from app.quant.signal_engine import start_signal_engine
 from app.websocket.market_stream import start_market_stream
 
@@ -148,8 +149,11 @@ async def lifespan(app: FastAPI):
     # Redis — required by auth_service (refresh-token store) and by
     # Phase 2.4+ for idempotency, Phase 2.5+ for pub/sub.
     # ---------------------------------------------------------------------
+    # init_redis() degrades to an in-memory fakeredis client in non-production
+    # when a real Redis is unreachable, so this only returns False in
+    # production — where a missing token store is a genuine outage.
     if not await init_redis():
-        raise RuntimeError("Redis connectivity check failed")
+        raise RuntimeError("Redis connectivity check failed (production)")
     logger.info("[startup] redis ready")
 
     # ---------------------------------------------------------------------
@@ -160,6 +164,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(_supervise("candle",       start_candle_engine)),
         asyncio.create_task(_supervise("signal",       start_signal_engine)),
         asyncio.create_task(_supervise("market_stream", start_market_stream)),
+        asyncio.create_task(_supervise("equity_snapshot", start_equity_snapshot_engine)),
     ]
     app.state.engine_tasks = tasks
     logger.info("[startup] %d background engines started", len(tasks))
