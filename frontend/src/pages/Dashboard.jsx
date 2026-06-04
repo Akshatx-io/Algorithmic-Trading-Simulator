@@ -16,6 +16,7 @@ import Badge from "../components/ui/Badge";
 import usePortfolio from "../hooks/usePortfolio";
 import usePerformance from "../hooks/usePerformance";
 import { formatCurrency } from "../utils/formatCurrency";
+import { GLOSSARY } from "../utils/glossary";
 
 const n = (v) => (typeof v === "number" && !Number.isNaN(v) ? v : 0);
 
@@ -44,28 +45,28 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* KPI ROW */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Equity" value={formatCurrency(equity)} icon={Wallet} />
+        <StatCard label="Equity" value={formatCurrency(equity)} icon={Wallet} info={GLOSSARY.equity} />
         <StatCard
           label="Total P&L"
           value={formatCurrency(pnl)}
           tone={pnl >= 0 ? "up" : "down"}
           delta={pnlPct}
           deltaSuffix="%"
-          icon={TrendingUp}
+          icon={TrendingUp} info={GLOSSARY.totalPnl}
         />
         <StatCard
           label="Unrealized"
           value={formatCurrency(unrealized)}
           tone={unrealized >= 0 ? "up" : "down"}
-          icon={Activity}
+          icon={Activity} info={GLOSSARY.unrealizedPnl}
         />
         <StatCard
           label="Realized"
           value={formatCurrency(realized)}
           tone={realized >= 0 ? "up" : "down"}
-          icon={CircleDollarSign}
+          icon={CircleDollarSign} info={GLOSSARY.realizedPnl}
         />
-        <StatCard label="Sharpe" value={sharpe.toFixed(2)} icon={Gauge} accent="accent" />
+        <StatCard label="Sharpe" value={sharpe.toFixed(2)} icon={Gauge} info={GLOSSARY.sharpe} accent="accent" />
       </div>
 
       {/* EQUITY CURVE */}

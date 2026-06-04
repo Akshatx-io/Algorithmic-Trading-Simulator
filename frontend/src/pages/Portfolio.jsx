@@ -16,6 +16,7 @@ import Badge from "../components/ui/Badge";
 import apiClient from "../services/apiClient";
 import { resetAccount } from "../services/portfolioService";
 import { formatCurrency } from "../utils/formatCurrency";
+import { GLOSSARY } from "../utils/glossary";
 
 const num = (v) => {
   const n = Number(v);
@@ -177,19 +178,19 @@ export default function Portfolio() {
     <div className="space-y-6">
       {/* SUMMARY */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Equity" value={formatCurrency(totals.equity)} icon={Wallet} />
-        <StatCard label="Cash" value={formatCurrency(totals.cash)} icon={Banknote} accent="accent" />
+        <StatCard label="Equity" value={formatCurrency(totals.equity)} icon={Wallet} info={GLOSSARY.equity} />
+        <StatCard label="Cash" value={formatCurrency(totals.cash)} icon={Banknote} info={GLOSSARY.cash} accent="accent" />
         <StatCard
           label="Unrealized P&L"
           value={formatCurrency(totals.unrealized)}
           tone={totals.unrealized >= 0 ? "up" : "down"}
-          icon={TrendingUp}
+          icon={TrendingUp} info={GLOSSARY.unrealizedPnl}
         />
         <StatCard
           label="Return"
           value={`${totals.pct.toFixed(2)}%`}
           tone={totals.pct >= 0 ? "up" : "down"}
-          icon={Percent}
+          icon={Percent} info={GLOSSARY.returnPct}
           accent="accent"
         />
       </div>

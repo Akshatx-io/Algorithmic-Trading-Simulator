@@ -4,6 +4,8 @@ import useMarket from "../../hooks/useMarket";
 import CandlestickChart from "../charts/CandlestickChart";
 import AISignalPanel from "./AISignalPanel";
 import Badge from "../ui/Badge";
+import InfoButton from "../ui/InfoButton";
+import { GLOSSARY } from "../../utils/glossary";
 import apiClient from "../../services/apiClient";
 import { formatCurrency } from "../../utils/formatCurrency";
 
@@ -133,15 +135,15 @@ export default function StockDetailsPanel({ position }) {
       {/* POSITION DATA */}
       <div className="grid grid-cols-2 gap-4 p-5 text-sm">
         <Stat label="Shares" value={quantity} raw />
-        <Stat label="Avg Price" value={avgPrice} />
-        <Stat label="Market Value" value={marketValue} />
-        <Stat label="Total Cost" value={totalCost} />
+        <Stat label="Avg Price" value={avgPrice} info={GLOSSARY.avgPrice} />
+        <Stat label="Market Value" value={marketValue} info={GLOSSARY.marketValue} />
+        <Stat label="Total Cost" value={totalCost} info={GLOSSARY.totalCost} />
       </div>
 
       {/* PNL */}
       <div className="border-t border-line p-5">
         <div className="flex justify-between">
-          <span className="text-gray-400">Unrealized P&L</span>
+          <span className="flex items-center gap-1.5 text-gray-400">Unrealized P&L <InfoButton entry={GLOSSARY.unrealizedPnl} size={12} /></span>
           <div className="text-right">
             <div className={`tnum ${unrealizedPnl >= 0 ? "text-up" : "text-down"}`}>
               {unrealizedPnl >= 0 ? "+" : ""}
@@ -191,14 +193,14 @@ export default function StockDetailsPanel({ position }) {
       {signalData && (
         <div className="space-y-4 border-t border-line p-5">
           <Section title="Trading Factors">
-            <GridStat label="Trend" value={factors.trend} />
-            <GridStat label="Momentum" value={factors.momentum} />
-            <GridStat label="Volatility" value={factors.volatility} />
+            <GridStat label="Trend" value={factors.trend} info={GLOSSARY.trend} />
+            <GridStat label="Momentum" value={factors.momentum} info={GLOSSARY.momentum} />
+            <GridStat label="Volatility" value={factors.volatility} info={GLOSSARY.volatility} />
           </Section>
           <Section title="Risk Metrics">
-            <GridStat label="Sharpe" value={riskMetrics.sharpe_ratio} />
-            <GridStat label="Drawdown" value={riskMetrics.max_drawdown} />
-            <GridStat label="Volatility" value={riskMetrics.volatility} />
+            <GridStat label="Sharpe" value={riskMetrics.sharpe_ratio} info={GLOSSARY.sharpe} />
+            <GridStat label="Drawdown" value={riskMetrics.max_drawdown} info={GLOSSARY.maxDrawdown} />
+            <GridStat label="Volatility" value={riskMetrics.volatility} info={GLOSSARY.volatility} />
           </Section>
         </div>
       )}
@@ -206,19 +208,25 @@ export default function StockDetailsPanel({ position }) {
   );
 }
 
-function Stat({ label, value, raw }) {
+function Stat({ label, value, raw, info }) {
   return (
     <div>
-      <p className="text-gray-400">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-gray-400">{label}</p>
+        {info && <InfoButton entry={info} size={12} />}
+      </div>
       <p className="tnum text-white">{raw ? Number(value) : formatCurrency(Number(value))}</p>
     </div>
   );
 }
 
-function GridStat({ label, value }) {
+function GridStat({ label, value, info }) {
   return (
     <div className="rounded-lg border border-line/70 bg-ink-900/60 p-3">
-      <div className="text-xs text-gray-400">{label}</div>
+      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+        {label}
+        {info && <InfoButton entry={info} size={11} />}
+      </div>
       <div className="tnum text-white">
         {typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "N/A"}
       </div>

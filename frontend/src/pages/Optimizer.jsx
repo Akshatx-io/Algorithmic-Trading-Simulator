@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   ScatterChart,
@@ -12,12 +12,14 @@ import {
 import { Sparkles, Star, ShieldCheck, Loader2 } from "lucide-react";
 
 import Card, { CardHeader, CardBody } from "../components/ui/Card";
+import InfoButton from "../components/ui/InfoButton";
 import { getOptimization } from "../services/optimizerService";
 import { STOCK_SYMBOLS } from "../utils/stockSymbols";
+import { GLOSSARY } from "../utils/glossary";
 
 const DEFAULT = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL"];
 // Low-Sharpe (deep indigo) -> high-Sharpe (radiant green): viridis-like ramp.
-const RAMP = ["#4338ca", "#2563eb", "#0891b2", "#0d9488", "#16a34a", "#4ade80"];
+const RAMP = ["#6366f1", "#3b82f6", "#06b6d4", "#14b8a6", "#22c55e", "#86efac"];
 const N_BINS = RAMP.length;
 
 const pct = (v) => `${Number(v || 0).toFixed(2)}%`;
@@ -33,6 +35,55 @@ function FrontierTooltip({ active, payload }) {
     </div>
   );
 }
+
+/**
+ * FrontierChart is memoized so toggling symbols (which only changes `selected`)
+ * never re-renders the heavy scatter — it re-renders only when the simulated
+ * `bins`/optima change. This removes the selection latency entirely.
+ */
+const FrontierChart = memo(function FrontierChart({ bins, maxSharpePoint, minVolPoint }) {
+  return (
+    <ResponsiveContainer width="100%" height={420}>
+      <ScatterChart margin={{ top: 10, right: 16, bottom: 16, left: 8 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+        <XAxis
+          type="number"
+          dataKey="vol"
+          name="Risk"
+          unit="%"
+          domain={["auto", "auto"]}
+          tick={{ fill: "#94a3b8", fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          label={{ value: "Volatility (Risk)", position: "insideBottom", offset: -8, fill: "#64748b", fontSize: 12 }}
+        />
+        <YAxis
+          type="number"
+          dataKey="ret"
+          name="Return"
+          unit="%"
+          domain={["auto", "auto"]}
+          tick={{ fill: "#94a3b8", fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          width={52}
+          label={{ value: "Expected Return", angle: -90, position: "insideLeft", fill: "#64748b", fontSize: 12 }}
+        />
+        <ZAxis range={[16, 16]} />
+        <Tooltip content={<FrontierTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "#334155" }} />
+        {bins.map((pts, i) => (
+          <Scatter key={i} data={pts} fill={RAMP[i]} fillOpacity={0.9} isAnimationActive={false} />
+        ))}
+        <Scatter data={minVolPoint} fill="#60a5fa" shape="star" isAnimationActive={false}>
+          <ZAxis range={[300, 300]} />
+        </Scatter>
+        <Scatter data={maxSharpePoint} fill="#f43f5e" shape="star" isAnimationActive={false}>
+          <ZAxis range={[360, 360]} />
+        </Scatter>
+      </ScatterChart>
+    </ResponsiveContainer>
+  );
+});
 
 function WeightBars({ weights, accent }) {
   const entries = Object.entries(weights || {}).sort((a, b) => b[1] - a[1]);
@@ -51,7 +102,19 @@ function WeightBars({ weights, accent }) {
   );
 }
 
-function PortfolioCard({ title, icon, accent, data }) {
+function Metric({ label, value, info, accent = "#34d399", color }) {
+  return (
+    <div className="rounded-xl border border-line/70 bg-ink-900/60 p-3">
+      <div className="flex items-center gap-1.5">
+        <p className="text-xs text-gray-400">{label}</p>
+        {info && <InfoButton entry={info} accent={accent} size={12} />}
+      </div>
+      <p className="tnum text-lg font-semibold" style={color ? { color } : undefined}>{value}</p>
+    </div>
+  );
+}
+
+function PortfolioCard({ title, icon, accent, data, info }) {
   const Icon = icon;
   if (!data) return null;
   return (
@@ -61,20 +124,12 @@ function PortfolioCard({ title, icon, accent, data }) {
           <Icon size={16} />
         </span>
         <h3 className="text-base font-semibold text-white">{title}</h3>
+        {info && <InfoButton entry={info} accent={accent} size={14} />}
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-line/70 bg-ink-900/60 p-3">
-          <p className="text-xs text-gray-400">Return</p>
-          <p className="tnum text-lg font-semibold" style={{ color: accent }}>{pct(data.return)}</p>
-        </div>
-        <div className="rounded-xl border border-line/70 bg-ink-900/60 p-3">
-          <p className="text-xs text-gray-400">Risk</p>
-          <p className="tnum text-lg font-semibold text-white">{pct(data.volatility)}</p>
-        </div>
-        <div className="rounded-xl border border-line/70 bg-ink-900/60 p-3">
-          <p className="text-xs text-gray-400">Sharpe</p>
-          <p className="tnum text-lg font-semibold text-white">{Number(data.sharpe).toFixed(3)}</p>
-        </div>
+        <Metric label="Return" value={pct(data.return)} info={GLOSSARY.expectedReturn} accent={accent} color={accent} />
+        <Metric label="Risk" value={pct(data.volatility)} info={GLOSSARY.risk} accent={accent} color="#fff" />
+        <Metric label="Sharpe" value={Number(data.sharpe).toFixed(3)} info={GLOSSARY.sharpe} accent={accent} color="#fff" />
       </div>
       <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Allocation</p>
       <WeightBars weights={data.weights} accent={accent} />
@@ -110,13 +165,12 @@ export default function Optimizer() {
     return () => {
       mounted = false;
     };
-    // re-run only when the user clicks Optimize (runKey), not on every toggle
+    // re-run only when the user clicks Optimize (runKey), not on every toggle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey]);
 
   const frontier = useMemo(() => data?.frontier || [], [data]);
 
-  // Bin the cloud by Sharpe into colored series (radiant ramp).
   const bins = useMemo(() => {
     if (!frontier.length) return [];
     const sh = frontier.map((p) => p.sharpe);
@@ -133,12 +187,14 @@ export default function Optimizer() {
     return out;
   }, [frontier]);
 
-  const maxSharpePoint = data?.max_sharpe
-    ? [{ vol: data.max_sharpe.volatility, ret: data.max_sharpe.return, sharpe: data.max_sharpe.sharpe }]
-    : [];
-  const minVolPoint = data?.min_vol
-    ? [{ vol: data.min_vol.volatility, ret: data.min_vol.return, sharpe: data.min_vol.sharpe }]
-    : [];
+  const maxSharpePoint = useMemo(
+    () => (data?.max_sharpe ? [{ vol: data.max_sharpe.volatility, ret: data.max_sharpe.return, sharpe: data.max_sharpe.sharpe }] : []),
+    [data]
+  );
+  const minVolPoint = useMemo(
+    () => (data?.min_vol ? [{ vol: data.min_vol.volatility, ret: data.min_vol.return, sharpe: data.min_vol.sharpe }] : []),
+    [data]
+  );
 
   const toggle = (sym) =>
     setSelected((cur) => (cur.includes(sym) ? cur.filter((s) => s !== sym) : [...cur, sym]));
@@ -149,7 +205,10 @@ export default function Optimizer() {
       <Card className="card-pad">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="mb-2 text-sm text-gray-400">Universe ({selected.length} selected)</p>
+            <div className="mb-2 flex items-center gap-1.5">
+              <p className="text-sm text-gray-400">Universe ({selected.length} selected)</p>
+              <InfoButton entry={GLOSSARY.optimizer} accent="#34d399" size={14} />
+            </div>
             <div className="flex flex-wrap gap-2">
               {STOCK_SYMBOLS.map((s) => {
                 const on = selected.includes(s);
@@ -185,11 +244,11 @@ export default function Optimizer() {
         <CardHeader
           title="Efficient Frontier"
           subtitle={data?.n_portfolios ? `${data.n_portfolios.toLocaleString()} Monte-Carlo portfolios` : "Monte-Carlo simulation"}
-          action={<Sparkles size={18} className="text-brand-400" />}
+          action={<InfoButton entry={GLOSSARY.efficientFrontier} accent="#34d399" size={16} />}
         />
         <CardBody>
           {loading ? (
-            <div className="flex h-[420px] items-center justify-center text-gray-500">Running {Number(6000).toLocaleString()} simulations…</div>
+            <div className="flex h-[420px] items-center justify-center text-gray-500">Running 6,000 simulations…</div>
           ) : data?.status !== "success" ? (
             <div className="flex h-[420px] items-center justify-center text-center text-gray-500">
               {data?.status === "need_two_symbols"
@@ -199,51 +258,7 @@ export default function Optimizer() {
                 : "No data."}
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={420}>
-              <ScatterChart margin={{ top: 10, right: 16, bottom: 16, left: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                <XAxis
-                  type="number"
-                  dataKey="vol"
-                  name="Risk"
-                  unit="%"
-                  domain={["auto", "auto"]}
-                  tick={{ fill: "#94a3b8", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  label={{ value: "Volatility (Risk)", position: "insideBottom", offset: -8, fill: "#64748b", fontSize: 12 }}
-                />
-                <YAxis
-                  type="number"
-                  dataKey="ret"
-                  name="Return"
-                  unit="%"
-                  domain={["auto", "auto"]}
-                  tick={{ fill: "#94a3b8", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={52}
-                  label={{ value: "Expected Return", angle: -90, position: "insideLeft", fill: "#64748b", fontSize: 12 }}
-                />
-                <ZAxis range={[10, 10]} />
-                <Tooltip content={<FrontierTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "#334155" }} />
-                {bins.map((pts, i) => (
-                  <Scatter
-                    key={i}
-                    data={pts}
-                    fill={RAMP[i]}
-                    fillOpacity={0.55}
-                    isAnimationActive={false}
-                  />
-                ))}
-                <Scatter data={minVolPoint} fill="#60a5fa" shape="star" isAnimationActive={false}>
-                  <ZAxis range={[260, 260]} />
-                </Scatter>
-                <Scatter data={maxSharpePoint} fill="#f43f5e" shape="star" isAnimationActive={false}>
-                  <ZAxis range={[320, 320]} />
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
+            <FrontierChart bins={bins} maxSharpePoint={maxSharpePoint} minVolPoint={minVolPoint} />
           )}
 
           {data?.status === "success" && (
@@ -262,8 +277,8 @@ export default function Optimizer() {
       {/* OPTIMAL PORTFOLIOS */}
       {data?.status === "success" && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <PortfolioCard title="Max Sharpe Portfolio" icon={Star} accent="#f43f5e" data={data.max_sharpe} />
-          <PortfolioCard title="Min Volatility Portfolio" icon={ShieldCheck} accent="#60a5fa" data={data.min_vol} />
+          <PortfolioCard title="Max Sharpe Portfolio" icon={Star} accent="#f43f5e" data={data.max_sharpe} info={GLOSSARY.maxSharpe} />
+          <PortfolioCard title="Min Volatility Portfolio" icon={ShieldCheck} accent="#60a5fa" data={data.min_vol} info={GLOSSARY.minVol} />
         </div>
       )}
     </div>

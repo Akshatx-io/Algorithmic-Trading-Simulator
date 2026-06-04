@@ -37,7 +37,7 @@ logger = get_logger("optimizer")
 TRADING_DAYS = 252
 DEFAULT_RISK_FREE = 0.02
 _MIN_OVERLAP = 30          # need at least this many aligned return rows
-_MAX_FRONTIER_POINTS = 4000  # cap scatter payload sent to the client
+_MAX_FRONTIER_POINTS = 2500  # cap scatter payload (crisp, low-latency client render)
 
 
 def _returns_frame(symbols: List[str], interval: str) -> pd.DataFrame:
