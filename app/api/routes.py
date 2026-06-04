@@ -52,6 +52,7 @@ from app.portfolio.performance_engine import calculate_performance_metrics
 from app.portfolio.pnl_engine import get_total_pnl
 from app.quant.signal_engine import signal_engine
 from app.quant.regime import analyze_regime
+from app.quant.optimizer import optimize_portfolio
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -338,6 +339,22 @@ def market_regime(symbol: str, interval: str = Query(default="1d")):
     symbol's price history, with a per-regime risk profile and transition
     matrix. Deterministic for a given input series."""
     return analyze_regime(symbol, interval=interval)
+
+
+# -----------------------------------------------------------------------------
+# Smart Portfolio Optimizer (Track C)
+# -----------------------------------------------------------------------------
+@router.get("/optimizer")
+def portfolio_optimizer(
+    symbols: str = Query(..., description="Comma-separated tickers, e.g. AAPL,MSFT,NVDA"),
+    interval: str = Query(default="1d"),
+    n: int = Query(default=6000, ge=500, le=20000),
+):
+    """Monte-Carlo efficient frontier over the given basket. Returns the
+    portfolio cloud plus the max-Sharpe and min-volatility optima with their
+    weights. Deterministic for a given basket."""
+    syms = [s for s in symbols.split(",") if s.strip()]
+    return optimize_portfolio(syms, interval=interval, n_portfolios=n)
 
 
 # -----------------------------------------------------------------------------

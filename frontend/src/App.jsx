@@ -31,6 +31,7 @@ const Performance     = lazy(() => import("./pages/Performance"));
 const Trade           = lazy(() => import("./pages/Trade"));
 const Account         = lazy(() => import("./pages/Account"));
 const MarketRegime    = lazy(() => import("./pages/MarketRegime"));
+const Optimizer       = lazy(() => import("./pages/Optimizer"));
 
 // ---- Fallbacks -------------------------------------------------------------
 
@@ -139,6 +140,7 @@ export default function App() {
             <Route path="performance" element={<Performance />} />
             <Route path="trade"      element={<Trade />} />
             <Route path="regime"     element={<MarketRegime />} />
+            <Route path="optimizer"  element={<Optimizer />} />
             <Route path="account"    element={<Account />} />
           </Route>
 
