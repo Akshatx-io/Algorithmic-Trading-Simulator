@@ -51,6 +51,7 @@ from app.portfolio.equity_snapshot_service import record_equity_snapshot
 from app.portfolio.performance_engine import calculate_performance_metrics
 from app.portfolio.pnl_engine import get_total_pnl
 from app.quant.signal_engine import signal_engine
+from app.quant.regime import analyze_regime
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -326,6 +327,17 @@ def get_signal(symbol: str):
 @router.get("/signals")
 def all_signals():
     return {"signals": list(signal_engine.get_all().values())}
+
+
+# -----------------------------------------------------------------------------
+# Market Regime Detection (Track C)
+# -----------------------------------------------------------------------------
+@router.get("/regime/{symbol}")
+def market_regime(symbol: str, interval: str = Query(default="1d")):
+    """K-Means market-regime classification (Bull / Bear / Sideways) over the
+    symbol's price history, with a per-regime risk profile and transition
+    matrix. Deterministic for a given input series."""
+    return analyze_regime(symbol, interval=interval)
 
 
 # -----------------------------------------------------------------------------

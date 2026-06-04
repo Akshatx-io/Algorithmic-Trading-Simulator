@@ -4,6 +4,7 @@ import {
   Wallet,
   LineChart,
   ArrowRightLeft,
+  Radar,
   Settings,
   LogOut,
   Activity,
@@ -17,6 +18,7 @@ const NAV = [
   { to: "/portfolio", label: "Portfolio", icon: Wallet },
   { to: "/performance", label: "Performance", icon: LineChart },
   { to: "/trade", label: "Trade", icon: ArrowRightLeft },
+  { to: "/regime", label: "Regime", icon: Radar },
   { to: "/account", label: "Settings", icon: Settings },
 ];
 
@@ -25,6 +27,7 @@ const META = {
   "/portfolio": ["Portfolio", "Holdings, allocation & positions"],
   "/performance": ["Performance", "Risk-adjusted analytics"],
   "/trade": ["Trade", "Place simulated orders"],
+  "/regime": ["Market Regime", "Bull / Bear / Sideways detection"],
   "/account": ["Account Settings", "Profile, security & preferences"],
 };
 
