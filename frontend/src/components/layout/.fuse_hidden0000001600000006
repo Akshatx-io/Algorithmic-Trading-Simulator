@@ -36,7 +36,6 @@ const META = {
   "/regime": ["Market Regime", "Bull / Bear / Sideways detection"],
   "/optimizer": ["Smart Portfolio Optimizer", "Monte-Carlo efficient frontier"],
   "/options": ["Monte Carlo Option Pricer", "GBM simulation + Black-Scholes"],
-  "/vol-surface": ["Neural Volatility Surface", "Implied vol across strikes x expiries"],
   "/paper-account": ["Paper Account", "Your simulated trading account"],
   "/account": ["Account Settings", "Profile, security & preferences"],
 };

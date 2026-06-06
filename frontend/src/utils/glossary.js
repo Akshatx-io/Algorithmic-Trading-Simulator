@@ -190,6 +190,36 @@ export const GLOSSARY = {
     what: "Share of simulated paths where the option finished in-the-money (positive payoff).",
     interpretation: "A simulation-based estimate of expiring with intrinsic value.",
   },
+  volSurface: {
+    title: "Neural Volatility Surface",
+    subtitle: "Implied vol across strikes x expiries",
+    what:
+      "Each point is the Black-Scholes implied volatility that reprices a European option at a given strike and expiry. The surface is reconstructed by inverting a parametric market-price grid with a Newton-Raphson solver, then smoothed into a clean fit.",
+    points: [
+      "X axis = moneyness (strike / spot); Y axis = time to expiry; Z / color = implied vol.",
+      "The downward tilt toward low strikes is the equity skew (crash insurance is dear).",
+      "Vol rising with maturity is the term structure of volatility.",
+    ],
+    interpretation:
+      "Desks price and risk-manage every option off this surface; its shape encodes the market's view of future risk.",
+  },
+  impliedVol: {
+    title: "Implied Volatility",
+    what: "The volatility input that makes the Black-Scholes price equal the observed market price.",
+    formula: "solve sigma: BS(S,K,T,r,sigma) = market price",
+    interpretation: "Higher implied vol = richer option premium = more expected movement priced in.",
+  },
+  volSkew: {
+    title: "Volatility Skew",
+    what: "The slope of implied vol across strikes at a fixed expiry. Equity markets skew negative - low strikes carry higher vol.",
+    formula: "IV(90% strike) - IV(110% strike)",
+    interpretation: "A steeper skew signals stronger demand for downside protection.",
+  },
+  termStructure: {
+    title: "ATM Term Structure",
+    what: "At-the-money implied vol as a function of time to expiry.",
+    interpretation: "Upward-sloping = calm now, more uncertainty later; inverted = near-term stress.",
+  },
 };
 
 export default GLOSSARY;

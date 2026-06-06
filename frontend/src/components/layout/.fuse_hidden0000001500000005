@@ -24,7 +24,6 @@ const NAV = [
   { to: "/regime", label: "Regime", icon: Radar },
   { to: "/optimizer", label: "Optimizer", icon: Sparkles },
   { to: "/options", label: "Options", icon: Sigma },
-  { to: "/vol-surface", label: "Vol Surface", icon: Box },
   { to: "/account", label: "Settings", icon: Settings },
 ];
 
@@ -36,7 +35,6 @@ const META = {
   "/regime": ["Market Regime", "Bull / Bear / Sideways detection"],
   "/optimizer": ["Smart Portfolio Optimizer", "Monte-Carlo efficient frontier"],
   "/options": ["Monte Carlo Option Pricer", "GBM simulation + Black-Scholes"],
-  "/vol-surface": ["Neural Volatility Surface", "Implied vol across strikes x expiries"],
   "/paper-account": ["Paper Account", "Your simulated trading account"],
   "/account": ["Account Settings", "Profile, security & preferences"],
 };

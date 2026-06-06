@@ -54,6 +54,7 @@ from app.quant.signal_engine import signal_engine
 from app.quant.regime import analyze_regime
 from app.quant.optimizer import optimize_portfolio
 from app.quant.option_pricer import price_option
+from app.quant.vol_surface import build_vol_surface
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -374,6 +375,23 @@ def option_montecarlo(
     """Monte-Carlo price a European option under GBM, with a Black-Scholes
     benchmark, Greeks, sample price paths, and the terminal-price distribution."""
     return price_option(s, k, t, r, sigma, kind=kind, n_paths=n)
+
+
+# -----------------------------------------------------------------------------
+# Neural Volatility Surface (Track C)
+# -----------------------------------------------------------------------------
+@router.get("/vol/surface")
+def volatility_surface(
+    s: float = Query(100.0, gt=0, description="Spot price"),
+    r: float = Query(0.04, ge=-1, le=1, description="Risk-free rate"),
+    base_vol: float = Query(0.22, gt=0, le=3, description="ATM vol level"),
+    skew: float = Query(-0.16, ge=-2, le=2, description="Smile skew (vol per log-moneyness)"),
+    curv: float = Query(0.7, ge=0, le=5, description="Smile convexity"),
+    term: float = Query(0.05, ge=-1, le=1, description="ATM term-structure slope"),
+):
+    """Implied-vol surface across strikes x expiries: parametric price surface
+    inverted to IV via vectorized Newton-Raphson, then smoothed (neural fit)."""
+    return build_vol_surface(s, r, base_vol, skew, curv, term)
 
 
 # -----------------------------------------------------------------------------
