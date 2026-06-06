@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 /**
@@ -24,9 +25,12 @@ export default function Modal({ open, onClose, title, subtitle, icon, accent = "
   if (!open) return null;
   const Icon = icon;
 
-  return (
+  // Portal to <body> so the overlay escapes any ancestor stacking/overflow
+  // context (cards use backdrop-blur/transform) — guarantees it renders on top
+  // and centered on the full viewport everywhere.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
     >
@@ -71,6 +75,7 @@ export default function Modal({ open, onClose, title, subtitle, icon, accent = "
         {/* Body */}
         <div className="max-h-[70vh] overflow-y-auto px-6 pb-6">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
