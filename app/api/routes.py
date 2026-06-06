@@ -53,6 +53,7 @@ from app.portfolio.pnl_engine import get_total_pnl
 from app.quant.signal_engine import signal_engine
 from app.quant.regime import analyze_regime
 from app.quant.optimizer import optimize_portfolio
+from app.quant.option_pricer import price_option
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -355,6 +356,24 @@ def portfolio_optimizer(
     weights. Deterministic for a given basket."""
     syms = [s for s in symbols.split(",") if s.strip()]
     return optimize_portfolio(syms, interval=interval, n_portfolios=n)
+
+
+# -----------------------------------------------------------------------------
+# Monte Carlo Option Pricing Simulator (Track C)
+# -----------------------------------------------------------------------------
+@router.get("/options/montecarlo")
+def option_montecarlo(
+    s: float = Query(..., gt=0, description="Spot price S0"),
+    k: float = Query(..., gt=0, description="Strike price K"),
+    t: float = Query(1.0, gt=0, le=30, description="Time to expiry in years"),
+    r: float = Query(0.05, ge=-1, le=1, description="Risk-free rate"),
+    sigma: float = Query(0.2, gt=0, le=5, description="Annualized volatility"),
+    kind: str = Query("call", pattern="^(call|put)$"),
+    n: int = Query(20000, ge=1000, le=100000, description="Number of MC paths"),
+):
+    """Monte-Carlo price a European option under GBM, with a Black-Scholes
+    benchmark, Greeks, sample price paths, and the terminal-price distribution."""
+    return price_option(s, k, t, r, sigma, kind=kind, n_paths=n)
 
 
 # -----------------------------------------------------------------------------

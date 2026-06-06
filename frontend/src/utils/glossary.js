@@ -1,97 +1,80 @@
 /**
- * Central glossary of metric / concept explanations.
- *
- * Each entry feeds the InfoButton overlay: { title, subtitle?, what, formula?,
- * points?: string[], interpretation? }. Keep copy precise and technical — these
- * are the "deep dive" definitions surfaced via the ⓘ icons across the app.
+ * Central glossary of metric / concept explanations. Each entry feeds the
+ * InfoButton overlay: { title, subtitle?, what, formula?, points?, interpretation? }.
  */
 export const GLOSSARY = {
   optimizer: {
     title: "Smart Portfolio Optimizer",
     subtitle: "Monte-Carlo efficient frontier",
-    what:
-      "Simulates thousands of randomly-weighted, long-only portfolios over your chosen basket and evaluates each on annualized return, risk, and risk-adjusted return. It then surfaces the two canonical optima — the maximum-Sharpe (tangency) portfolio and the minimum-variance portfolio.",
+    what: "Simulates thousands of randomly-weighted, long-only portfolios over your chosen basket and evaluates each on annualized return, risk, and risk-adjusted return. It then surfaces the maximum-Sharpe (tangency) and minimum-variance portfolios.",
     points: [
-      "Each dot is one candidate portfolio (a set of weights summing to 100%).",
+      "Each dot is one candidate portfolio (weights summing to 100%).",
       "X-axis = volatility (risk); Y-axis = expected return. Up-and-left is better.",
       "Color encodes the Sharpe ratio — deep indigo (low) to radiant green (high).",
-      "The upper-left boundary of the cloud is the efficient frontier: the best return achievable for each level of risk.",
+      "The upper-left boundary is the efficient frontier: best return per unit of risk.",
     ],
-    formula: "ret = wᵀμ · vol = √(wᵀΣw) · Sharpe = (ret − r_f) / vol",
-    interpretation:
-      "Use it to see the risk/return trade-off of a basket and to anchor allocation decisions on the two mathematically-optimal mixes rather than guesswork.",
+    formula: "ret = wᵀμ · vol = √(wᵀΣw) · Sharpe = (ret - r_f) / vol",
+    interpretation: "Anchor allocation decisions on the two mathematically-optimal mixes rather than guesswork.",
   },
   efficientFrontier: {
     title: "Efficient Frontier",
-    what:
-      "The set of portfolios that deliver the highest expected return for a given level of risk (or the lowest risk for a given return). It forms the upper-left edge of the Monte-Carlo cloud.",
+    what: "The set of portfolios delivering the highest expected return for a given level of risk. It forms the upper-left edge of the cloud.",
     points: [
-      "Portfolios below the frontier are sub-optimal — you can get more return for the same risk.",
-      "Moving along the frontier trades additional risk for additional return.",
+      "Portfolios below the frontier are sub-optimal.",
+      "Moving along the frontier trades risk for return.",
     ],
-    interpretation:
-      "Rational allocations sit on the frontier; the right point depends on your risk tolerance.",
+    interpretation: "Rational allocations sit on the frontier; the right point depends on your risk tolerance.",
   },
   expectedReturn: {
     title: "Expected Return",
     what: "The portfolio's annualized mean return, estimated from historical daily returns.",
-    formula: "ret = wᵀμ,  where μ = mean(daily returns) × 252",
-    interpretation: "Higher is better, but must be weighed against the risk taken to achieve it.",
+    formula: "ret = wᵀμ,  μ = mean(daily returns) × 252",
+    interpretation: "Higher is better, but weigh it against the risk taken.",
   },
   risk: {
     title: "Risk (Volatility)",
     what: "Annualized standard deviation of portfolio returns — how much the value swings.",
-    formula: "vol = √(wᵀ Σ w),  where Σ = cov(daily returns) × 252",
-    interpretation:
-      "Lower volatility means a smoother equity curve. Diversification (low-correlation assets) reduces it.",
+    formula: "vol = √(wᵀ Σ w),  Σ = cov(daily returns) × 252",
+    interpretation: "Lower volatility = smoother equity curve. Diversification reduces it.",
   },
   sharpe: {
     title: "Sharpe Ratio",
-    what:
-      "Risk-adjusted return: excess return per unit of volatility. The single best summary of 'quality' of returns.",
-    formula: "Sharpe = (ret − r_f) / vol",
-    points: [
-      "< 1  — sub-par risk-adjusted return",
-      "1–2 — good",
-      "> 2  — excellent",
-    ],
-    interpretation: "Maximizing Sharpe finds the tangency portfolio — the best bang per unit of risk.",
+    what: "Risk-adjusted return: excess return per unit of volatility.",
+    formula: "Sharpe = (ret - r_f) / vol",
+    points: ["< 1 — sub-par", "1-2 — good", "> 2 — excellent"],
+    interpretation: "Maximizing Sharpe finds the tangency portfolio — best return per unit of risk.",
   },
   maxSharpe: {
     title: "Max-Sharpe Portfolio",
     subtitle: "Tangency portfolio",
-    what:
-      "The simulated portfolio with the highest Sharpe ratio — the best risk-adjusted return in the basket.",
-    interpretation:
-      "Often the preferred allocation for return-seeking investors who still care about risk efficiency.",
+    what: "The simulated portfolio with the highest Sharpe ratio — best risk-adjusted return.",
+    interpretation: "Preferred by return-seekers who still care about risk efficiency.",
   },
   minVol: {
     title: "Min-Volatility Portfolio",
     what: "The simulated portfolio with the lowest volatility — the calmest equity curve.",
-    interpretation:
-      "Preferred by risk-averse investors; usually gives up some return for materially lower drawdowns.",
+    interpretation: "Preferred by risk-averse investors; usually gives up some return for lower drawdowns.",
   },
-  // ---- Performance metrics ----
   totalReturn: {
     title: "Total Return",
     what: "Cumulative growth of account equity since inception, as a percentage of starting capital.",
-    formula: "(equity_now − equity_start) / equity_start",
+    formula: "(equity_now - equity_start) / equity_start",
   },
   maxDrawdown: {
     title: "Max Drawdown",
-    what: "The largest peak-to-trough decline in equity — the worst loss you'd have endured holding through.",
-    formula: "max over time of (peak − equity) / peak",
-    interpretation: "A key risk gauge; smaller is better. Big drawdowns are psychologically hard to hold.",
+    what: "The largest peak-to-trough decline in equity — the worst loss holding through.",
+    formula: "max over time of (peak - equity) / peak",
+    interpretation: "A key risk gauge; smaller is better.",
   },
   winRate: {
     title: "Win Rate",
     what: "Share of closed trades that were profitable.",
-    interpretation: "High win rate isn't sufficient alone — a few large losses can still erase many small wins.",
+    interpretation: "High win rate alone isn't enough — a few large losses can erase many small wins.",
   },
   volatility: {
     title: "Volatility",
-    what: "Annualized standard deviation of returns — the dispersion of outcomes around the mean.",
-    interpretation: "Higher volatility = wider range of likely results, both up and down.",
+    what: "Annualized standard deviation of returns — the dispersion of outcomes.",
+    interpretation: "Higher volatility = wider range of likely results.",
   },
   profitFactor: {
     title: "Profit Factor",
@@ -99,7 +82,6 @@ export const GLOSSARY = {
     formula: "Σ winning P&L / |Σ losing P&L|",
     points: ["> 1 is profitable", "> 1.5 is strong", "< 1 loses money"],
   },
-  // ---- Portfolio / position metrics ----
   equity: {
     title: "Equity",
     what: "Total account value = cash balance + mark-to-market value of all open positions.",
@@ -114,8 +96,8 @@ export const GLOSSARY = {
   },
   unrealizedPnl: {
     title: "Unrealized P&L",
-    what: "Paper profit/loss on open positions at current market prices — not yet locked in.",
-    formula: "(current_price − avg_price) × quantity",
+    what: "Paper profit/loss on open positions at current prices — not yet locked in.",
+    formula: "(current_price - avg_price) × quantity",
     interpretation: "Fluctuates with price; becomes realized only when you close the position.",
   },
   realizedPnl: {
@@ -124,7 +106,7 @@ export const GLOSSARY = {
   },
   avgPrice: {
     title: "Average Price",
-    what: "Your cost basis — the average price paid across the lots that make up the position.",
+    what: "Your cost basis — the average price paid across the lots in the position.",
   },
   marketValue: {
     title: "Market Value",
@@ -139,18 +121,74 @@ export const GLOSSARY = {
     what: "Unrealized gain/loss as a percentage of cost basis.",
     formula: "unrealized P&L / invested cost × 100",
   },
-  // ---- Signal factors ----
   trend: {
     title: "Trend",
     what: "Directional strength from the gap between fast and slow EMAs.",
-    formula: "(EMA_fast − EMA_slow) / EMA_slow",
+    formula: "(EMA_fast - EMA_slow) / EMA_slow",
     interpretation: "Positive = uptrend, negative = downtrend, near zero = range-bound.",
   },
   momentum: {
     title: "Momentum",
     what: "Centered RSI(14) — the speed and conviction of recent price moves.",
-    formula: "(RSI − 50) / 50",
+    formula: "(RSI - 50) / 50",
     interpretation: "Above 0 favors buyers; below 0 favors sellers.",
+  },
+  optionPricer: {
+    title: "Monte Carlo Option Pricer",
+    subtitle: "GBM simulation + Black-Scholes",
+    what: "Prices a European option by simulating thousands of terminal prices for the underlying under Geometric Brownian Motion (risk-neutral), then averaging and discounting the payoff. A closed-form Black-Scholes price is shown as the analytical benchmark.",
+    formula: "S_T = S0·exp((r - ½σ²)T + σ√T·Z),  price = e^(-rT)·E[payoff]",
+    points: [
+      "Each faint line is one simulated price path of the underlying.",
+      "The histogram is the distribution of simulated prices at expiry (S_T).",
+      "The MC price should land within its 95% confidence interval of Black-Scholes.",
+    ],
+    interpretation: "Monte Carlo generalizes to exotic/path-dependent payoffs where no closed form exists.",
+  },
+  mcPrice: {
+    title: "Monte Carlo Price",
+    what: "Average discounted option payoff across all simulated paths, with a 95% confidence interval.",
+    formula: "e^(-rT) · mean(payoff),  payoff = max(S_T - K, 0) for a call",
+    interpretation: "A narrower CI means more precision. It converges to Black-Scholes as paths grow.",
+  },
+  blackScholes: {
+    title: "Black-Scholes Price",
+    what: "The closed-form analytical fair value of a European option — the theoretical benchmark.",
+    interpretation: "If the MC estimate brackets this value, the simulation is calibrated correctly.",
+  },
+  delta: {
+    title: "Delta",
+    what: "Sensitivity of option price to a $1 move in the underlying.",
+    formula: "∂V/∂S",
+    interpretation: "Call delta 0 to 1, put delta -1 to 0. Around 0.5 means at-the-money.",
+  },
+  gamma: {
+    title: "Gamma",
+    what: "Rate of change of delta per $1 move — the curvature of the position.",
+    formula: "∂²V/∂S²",
+    interpretation: "Highest at-the-money near expiry; high gamma means delta shifts fast.",
+  },
+  vega: {
+    title: "Vega",
+    what: "Sensitivity of option price to a 1% change in implied volatility.",
+    formula: "∂V/∂σ",
+    interpretation: "Long options are long vega — they gain value when volatility rises.",
+  },
+  theta: {
+    title: "Theta",
+    what: "Time decay — how much value the option loses per day, all else equal.",
+    formula: "∂V/∂t (per day)",
+    interpretation: "Usually negative for long options; the cost of holding optionality.",
+  },
+  rho: {
+    title: "Rho",
+    what: "Sensitivity of option price to a 1% change in the risk-free interest rate.",
+    formula: "∂V/∂r",
+  },
+  probItm: {
+    title: "Probability ITM",
+    what: "Share of simulated paths where the option finished in-the-money (positive payoff).",
+    interpretation: "A simulation-based estimate of expiring with intrinsic value.",
   },
 };
 

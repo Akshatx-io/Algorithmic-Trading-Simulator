@@ -32,6 +32,7 @@ const Trade           = lazy(() => import("./pages/Trade"));
 const Account         = lazy(() => import("./pages/Account"));
 const MarketRegime    = lazy(() => import("./pages/MarketRegime"));
 const Optimizer       = lazy(() => import("./pages/Optimizer"));
+const OptionPricer    = lazy(() => import("./pages/OptionPricer"));
 
 // ---- Fallbacks -------------------------------------------------------------
 
@@ -141,6 +142,7 @@ export default function App() {
             <Route path="trade"      element={<Trade />} />
             <Route path="regime"     element={<MarketRegime />} />
             <Route path="optimizer"  element={<Optimizer />} />
+            <Route path="options"    element={<OptionPricer />} />
             <Route path="account"    element={<Account />} />
           </Route>
 
