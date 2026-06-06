@@ -1,67 +1,14 @@
-import { memo, useEffect, useMemo, useState } from "react";
-import {
-  ResponsiveContainer,
-  LineChart, Line,
-  BarChart, Bar, Cell,
-  XAxis, YAxis, Tooltip, ReferenceLine, CartesianGrid,
-} from "recharts";
+import { useEffect, useState } from "react";
 import { Dices, Loader2, Sigma } from "lucide-react";
 
-import Card, { CardHeader, CardBody } from "../components/ui/Card";
+import Card from "../components/ui/Card";
 import InfoButton from "../components/ui/InfoButton";
+import MonteCarloViz from "../components/ui/MonteCarloViz";
 import { priceOption } from "../services/optionService";
 import { GLOSSARY } from "../utils/glossary";
 
-const PATH_COLORS = ["#60a5fa", "#34d399", "#a78bfa", "#f472b6", "#fbbf24", "#22d3ee"];
 const usd = (n) =>
   `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-/** Memoized fan-of-paths chart — re-renders only when the simulation changes. */
-const PathFan = memo(function PathFan({ rows, pathIds, strike }) {
-  return (
-    <ResponsiveContainer width="100%" height={360}>
-      <LineChart data={rows} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.07)" vertical={false} />
-        <XAxis dataKey="t" type="number" domain={["dataMin", "dataMax"]}
-          tickFormatter={(v) => `${Number(v).toFixed(2)}y`}
-          tick={{ fill: "#94a3b8", fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={40} />
-        <YAxis tickFormatter={(v) => `$${Math.round(v)}`} tick={{ fill: "#94a3b8", fontSize: 11 }}
-          tickLine={false} axisLine={false} width={52} domain={["auto", "auto"]} />
-        <ReferenceLine y={strike} stroke="#f43f5e" strokeDasharray="5 4"
-          label={{ value: `Strike ${usd(strike)}`, fill: "#fb7185", fontSize: 11, position: "insideTopRight" }} />
-        {pathIds.map((id, i) => (
-          <Line key={id} type="monotone" dataKey={`p${id}`} stroke={PATH_COLORS[i % PATH_COLORS.length]}
-            strokeWidth={1} strokeOpacity={0.4} dot={false} isAnimationActive={false} />
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
-  );
-});
-
-/** Memoized terminal-price histogram. */
-const TerminalHist = memo(function TerminalHist({ data, strike }) {
-  return (
-    <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.07)" vertical={false} />
-        <XAxis dataKey="price" tickFormatter={(v) => `$${Math.round(v)}`}
-          tick={{ fill: "#94a3b8", fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={28} />
-        <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} tickLine={false} axisLine={false} width={40} />
-        <Tooltip
-          contentStyle={{ backgroundColor: "#0b1120", border: "1px solid #334155", borderRadius: "8px", color: "#e2e8f0" }}
-          formatter={(v) => [v, "paths"]}
-          labelFormatter={(l) => `S_T ~ ${usd(l)}`}
-        />
-        <ReferenceLine x={strike} stroke="#f43f5e" strokeDasharray="5 4" />
-        <Bar dataKey="count" radius={[2, 2, 0, 0]} isAnimationActive={false}>
-          {data.map((d) => (
-            <Cell key={d.price} fill={d.price >= strike ? "#34d399" : "#475569"} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-});
 
 function NumField({ label, value, onChange, step = "1", min }) {
   return (
@@ -98,6 +45,7 @@ export default function OptionPricer() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [runKey, setRunKey] = useState(0);
+  const [simId, setSimId] = useState(0);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -111,7 +59,9 @@ export default function OptionPricer() {
           r: Number(form.rPct) / 100, sigma: Number(form.volPct) / 100,
           kind: form.kind, n: Number(form.n),
         });
-        if (mounted) setData(d);
+        if (!mounted) return;
+        setData(d);
+        if (d?.status === "success") setSimId((s) => s + 1);
       } catch {
         if (mounted) setData({ status: "error" });
       } finally {
@@ -124,18 +74,6 @@ export default function OptionPricer() {
   }, [runKey]);
 
   const ok = data?.status === "success";
-
-  const pathIds = useMemo(() => (ok ? data.paths.map((p) => p.id) : []), [data, ok]);
-  const rows = useMemo(() => {
-    if (!ok) return [];
-    return data.time_axis.map((t, i) => {
-      const row = { t };
-      data.paths.forEach((p) => { row[`p${p.id}`] = p.values[i]; });
-      return row;
-    });
-  }, [data, ok]);
-
-  const nPaths = ok ? Number(data.inputs?.n_paths ?? form.n) : Number(form.n);
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -207,32 +145,19 @@ export default function OptionPricer() {
         )}
       </div>
 
-      {/* RIGHT: charts */}
-      <div className="space-y-6 xl:col-span-2">
-        <Card>
-          <CardHeader
-            title="Monte Carlo Price Paths"
-            subtitle={ok ? `${nPaths.toLocaleString()} paths simulated` : "GBM simulation"}
-            action={<InfoButton entry={GLOSSARY.optionPricer} accent="#34d399" size={16} />}
+      {/* RIGHT: live animated simulation */}
+      <div className="xl:col-span-2">
+        <Card className="card-pad">
+          <MonteCarloViz
+            paths={ok ? data.paths : []}
+            timeAxis={ok ? data.time_axis : []}
+            histogram={ok ? data.histogram : []}
+            strike={ok ? data.strike : Number(form.K)}
+            kind={form.kind}
+            runId={simId}
+            infoEntry={GLOSSARY.optionPricer}
+            loading={loading}
           />
-          <CardBody>
-            {loading ? (
-              <div className="flex h-[360px] items-center justify-center text-gray-500">Simulating price paths...</div>
-            ) : !ok ? (
-              <div className="flex h-[360px] items-center justify-center text-gray-500">Adjust inputs and run the simulation.</div>
-            ) : (
-              <PathFan rows={rows} pathIds={pathIds} strike={data.strike} />
-            )}
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader title="Terminal Price Distribution" subtitle="Simulated price at expiry; green = in-the-money" />
-          <CardBody>
-            {ok ? <TerminalHist data={data.histogram} strike={data.strike} /> : (
-              <div className="flex h-[280px] items-center justify-center text-gray-500">-</div>
-            )}
-          </CardBody>
         </Card>
       </div>
     </div>

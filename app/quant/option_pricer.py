@@ -29,8 +29,8 @@ from app.core.logger import get_logger
 logger = get_logger("option_pricer")
 
 _MAX_PATHS = 100_000
-_MAX_SAMPLE_PATHS = 60     # full price-path lines drawn on the client
-_PATH_STEPS = 60           # time steps per drawn path
+_MAX_SAMPLE_PATHS = 120    # full price-path lines drawn on the client
+_PATH_STEPS = 80           # time steps per drawn path (smooth curves)
 _HIST_BINS = 40
 
 
