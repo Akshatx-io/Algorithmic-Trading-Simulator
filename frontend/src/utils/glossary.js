@@ -220,6 +220,25 @@ export const GLOSSARY = {
     what: "At-the-money implied vol as a function of time to expiry.",
     interpretation: "Upward-sloping = calm now, more uncertainty later; inverted = near-term stress.",
   },
+  volForecast: {
+    title: "Vol Surface Forecaster",
+    subtitle: "AR(1) factor dynamics + confidence band",
+    what:
+      "Forecasts how the implied-vol surface evolves over the next few days. Surface dynamics are decomposed into three interpretable factors - ATM level, skew, and term slope - each modeled as a mean-reverting AR(1) / Ornstein-Uhlenbeck process fit to its history. The factors are forecast h days ahead and the surface is rebuilt from them.",
+    points: [
+      "Solid line = today; dashed = forecast. The shaded band is the 95% confidence interval.",
+      "Vol mean-reverts: high vol drifts down toward its long-run level, low vol drifts up.",
+      "The band widens with horizon as forecast uncertainty compounds.",
+    ],
+    interpretation:
+      "Forecasting the surface lets a desk pre-position vega and hedge gamma before the move, not after.",
+  },
+  forecastBand: {
+    title: "95% Confidence Band",
+    what: "The range the forecast ATM vol is expected to fall within 95% of the time, from the AR(1) forecast variance.",
+    formula: "Var(h) = sigma^2 (1 - phi^2h) / (1 - phi^2)",
+    interpretation: "Wider band = less certainty. It grows with the forecast horizon.",
+  },
 };
 
 export default GLOSSARY;

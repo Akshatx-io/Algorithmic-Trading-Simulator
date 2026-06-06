@@ -54,7 +54,7 @@ from app.quant.signal_engine import signal_engine
 from app.quant.regime import analyze_regime
 from app.quant.optimizer import optimize_portfolio
 from app.quant.option_pricer import price_option
-from app.quant.vol_surface import build_vol_surface
+from app.quant.vol_surface import build_vol_surface, build_vol_forecast
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -392,6 +392,21 @@ def volatility_surface(
     """Implied-vol surface across strikes x expiries: parametric price surface
     inverted to IV via vectorized Newton-Raphson, then smoothed (neural fit)."""
     return build_vol_surface(s, r, base_vol, skew, curv, term)
+
+
+@router.get("/vol/forecast")
+def volatility_forecast(
+    s: float = Query(100.0, gt=0),
+    r: float = Query(0.04, ge=-1, le=1),
+    base_vol: float = Query(0.22, gt=0, le=3),
+    skew: float = Query(-0.16, ge=-2, le=2),
+    curv: float = Query(0.7, ge=0, le=5),
+    term: float = Query(0.05, ge=-1, le=1),
+    horizon: int = Query(5, ge=1, le=30, description="Forecast horizon (trading days)"),
+):
+    """Forecast how the vol surface evolves h days out via mean-reverting AR(1)
+    factor dynamics, with a 95% band and today-vs-forecast comparison."""
+    return build_vol_forecast(s, r, base_vol, skew, curv, term, horizon)
 
 
 # -----------------------------------------------------------------------------

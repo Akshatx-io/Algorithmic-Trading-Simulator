@@ -35,7 +35,6 @@ const Optimizer       = lazy(() => import("./pages/Optimizer"));
 const OptionPricer    = lazy(() => import("./pages/OptionPricer"));
 const PaperAccount    = lazy(() => import("./pages/PaperAccount"));
 const VolSurface      = lazy(() => import("./pages/VolSurface"));
-const VolForecast     = lazy(() => import("./pages/VolForecast"));
 
 // ---- Fallbacks -------------------------------------------------------------
 
@@ -147,7 +146,6 @@ export default function App() {
             <Route path="optimizer"  element={<Optimizer />} />
             <Route path="options"    element={<OptionPricer />} />
             <Route path="vol-surface" element={<VolSurface />} />
-            <Route path="vol-forecast" element={<VolForecast />} />
             <Route path="paper-account" element={<PaperAccount />} />
             <Route path="account"    element={<Account />} />
           </Route>
