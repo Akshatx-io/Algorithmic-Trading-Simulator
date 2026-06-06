@@ -2,22 +2,38 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import InfoButton from "./InfoButton";
 
 /**
- * MonteCarloViz — high-performance canvas renderer that animates a Monte Carlo
- * option simulation in real time: GBM price paths sweep out from spot, and the
- * terminal-price distribution builds in sync. Pure <canvas> + requestAnimationFrame
- * (no SVG diffing), devicePixelRatio-crisp, ResizeObserver-aware, and auto-stops
- * the moment the run completes so it never burns CPU while idle.
+ * MonteCarloViz — production-grade canvas renderer that animates a Monte Carlo
+ * option simulation the way a quant desk would visualize it:
+ *
+ *   • Paths launch in a STAGGERED CASCADE (not all at once), each tracing from
+ *     spot to expiry with a glowing comet head, so you watch individual sample
+ *     paths stream out and fan into the cone of outcomes.
+ *   • The terminal-price distribution ACCUMULATES as paths land — the histogram
+ *     fills in causally with the simulation, exactly like real MC sampling.
+ *   • A LIVE MC ESTIMATE converges (with a damped, decaying wobble) toward the
+ *     final price as samples arrive.
+ *
+ * Pure <canvas> + requestAnimationFrame with pixel coordinates precomputed once
+ * per resize (no per-frame remapping), devicePixelRatio-crisp, ResizeObserver
+ * aware, and the loop auto-stops the instant the run settles — zero idle CPU.
  */
 
 const PALETTE = [
-  "#60a5fa", "#34d399", "#a78bfa", "#f472b6",
-  "#fbbf24", "#22d3ee", "#f87171", "#4ade80",
+  "#60a5fa", "#38bdf8", "#34d399", "#a78bfa",
+  "#f472b6", "#fbbf24", "#22d3ee", "#4ade80",
 ];
-const PATH_H = 372;
-const HIST_H = 230;
-const DURATION = 1900; // ms for a full sweep
-const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const PATH_H = 388;
+const HIST_H = 224;
+
+// Pacing (normalized 0..1 across DURATION). Deliberate, institutional tempo.
+const DURATION = 4400;   // ms for a full run
+const STAGGER = 0.6;     // window over which path launches are spread
+const TRAVEL = 0.4;      // each path's spot->expiry travel time
+
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const dollars = (n) => `$${Math.round(n).toLocaleString("en-US")}`;
+const usd2 = (n) => `$${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function MonteCarloViz({
   paths = [],
@@ -25,6 +41,7 @@ export default function MonteCarloViz({
   histogram = [],
   strike = 0,
   kind = "call",
+  mcPrice = 0,
   runId = 0,
   infoEntry,
   loading = false,
@@ -35,12 +52,16 @@ export default function MonteCarloViz({
   const histCv = useRef(null);
   const raf = useRef(0);
   const prog = useRef(0);
+  const coords = useRef([]);          // precomputed pixel coords per path
   const size = useRef({ pW: 0, pH: PATH_H, hW: 0, hH: HIST_H });
+  const lastStat = useRef({ done: -1, est: -1 });
 
-  const [pct, setPct] = useState(0);
   const [running, setRunning] = useState(false);
+  const [completed, setCompleted] = useState(0);
+  const [estimate, setEstimate] = useState(0);
 
   const ready = paths.length > 0 && timeAxis.length > 1 && histogram.length > 0;
+  const N = paths.length;
 
   const domain = useMemo(() => {
     if (!ready) return null;
@@ -58,6 +79,12 @@ export default function MonteCarloViz({
     return { lo: lo - pad, hi: hi + pad, steps: timeAxis.length - 1, T: timeAxis[timeAxis.length - 1] || 1 };
   }, [paths, timeAxis, strike, ready]);
 
+  // staggered launch time per path (normalized)
+  const launches = useMemo(() => {
+    if (!N) return [];
+    return paths.map((_, i) => (N === 1 ? 0 : (i / (N - 1)) * STAGGER));
+  }, [paths, N]);
+
   const histMax = useMemo(
     () => histogram.reduce((m, b) => Math.max(m, b.count), 0) || 1,
     [histogram],
@@ -67,67 +94,81 @@ export default function MonteCarloViz({
     return [histogram[0].price, histogram[histogram.length - 1].price];
   }, [histogram]);
 
-  // --- crisp sizing ---
+  const ML = 52, MR = 16, MT = 12, MB = 26;
+
+  // --- crisp sizing + precompute path pixel coords ---
   const measure = () => {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    if (pathWrap.current && pathCv.current) {
-      const w = pathWrap.current.clientWidth;
-      size.current.pW = w;
-      size.current.pH = PATH_H;
-      pathCv.current.width = Math.round(w * dpr);
-      pathCv.current.height = Math.round(PATH_H * dpr);
-      pathCv.current.style.width = `${w}px`;
-      pathCv.current.style.height = `${PATH_H}px`;
-      pathCv.current.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    if (histWrap.current && histCv.current) {
-      const w = histWrap.current.clientWidth;
-      size.current.hW = w;
-      size.current.hH = HIST_H;
-      histCv.current.width = Math.round(w * dpr);
-      histCv.current.height = Math.round(HIST_H * dpr);
-      histCv.current.style.width = `${w}px`;
-      histCv.current.style.height = `${HIST_H}px`;
-      histCv.current.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
+    const cfg = (cv, wrap, h) => {
+      if (!cv || !wrap) return 0;
+      const w = wrap.clientWidth;
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+      cv.style.width = `${w}px`;
+      cv.style.height = `${h}px`;
+      cv.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+      return w;
+    };
+    size.current.pW = cfg(pathCv.current, pathWrap.current, PATH_H);
+    size.current.pH = PATH_H;
+    size.current.hW = cfg(histCv.current, histWrap.current, HIST_H);
+    size.current.hH = HIST_H;
+    buildCoords();
   };
 
-  const drawPaths = (p) => {
+  const buildCoords = () => {
+    if (!domain) return;
+    const W = size.current.pW, H = size.current.pH;
+    const plotW = W - ML - MR, plotH = H - MT - MB;
+    const { lo, hi, steps } = domain;
+    const out = new Array(N);
+    for (let pi = 0; pi < N; pi++) {
+      const vals = paths[pi].values;
+      const xs = new Float32Array(steps + 1);
+      const ys = new Float32Array(steps + 1);
+      for (let k = 0; k <= steps; k++) {
+        xs[k] = ML + (k / steps) * plotW;
+        ys[k] = MT + (1 - (vals[k] - lo) / (hi - lo)) * plotH;
+      }
+      out[pi] = { xs, ys };
+    }
+    coords.current = out;
+  };
+
+  const drawPaths = (u) => {
     const cv = pathCv.current;
-    if (!cv || !domain) return;
+    if (!cv || !domain || coords.current.length !== N) return;
     const ctx = cv.getContext("2d");
     const W = size.current.pW, H = size.current.pH;
-    const ml = 50, mr = 14, mt = 12, mb = 24;
-    const plotW = W - ml - mr, plotH = H - mt - mb;
+    const plotH = H - MT - MB;
     const { lo, hi, steps, T } = domain;
-    const X = (i) => ml + (i / steps) * plotW;
-    const Y = (price) => mt + (1 - (price - lo) / (hi - lo)) * plotH;
+    const Y = (price) => MT + (1 - (price - lo) / (hi - lo)) * plotH;
 
     ctx.clearRect(0, 0, W, H);
     ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
 
-    // horizontal grid + price labels
+    // grid + price labels
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     for (let g = 0; g <= 4; g++) {
       const price = lo + (hi - lo) * (g / 4);
       const yy = Y(price);
-      ctx.strokeStyle = "rgba(148,163,184,0.08)";
+      ctx.strokeStyle = "rgba(148,163,184,0.07)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(ml, yy);
-      ctx.lineTo(W - mr, yy);
+      ctx.moveTo(ML, yy);
+      ctx.lineTo(W - MR, yy);
       ctx.stroke();
       ctx.fillStyle = "#64748b";
-      ctx.fillText(dollars(price), ml - 8, yy);
+      ctx.fillText(dollars(price), ML - 8, yy);
     }
-
     // time labels
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = "#64748b";
     for (let g = 0; g <= 4; g++) {
-      ctx.fillText(`${(T * (g / 4)).toFixed(2)}y`, X((steps * g) / 4), H - 7);
+      const x = ML + ((W - ML - MR) * g) / 4;
+      ctx.fillText(`${(T * (g / 4)).toFixed(2)}y`, x, H - 8);
     }
 
     // strike line
@@ -136,62 +177,82 @@ export default function MonteCarloViz({
     ctx.setLineDash([5, 4]);
     ctx.lineWidth = 1.3;
     ctx.beginPath();
-    ctx.moveTo(ml, sy);
-    ctx.lineTo(W - mr, sy);
+    ctx.moveTo(ML, sy);
+    ctx.lineTo(W - MR, sy);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#fb7185";
     ctx.textAlign = "left";
-    ctx.fillText(`Strike ${dollars(strike)}`, ml + 6, sy - 6);
+    ctx.fillText(`Strike ${dollars(strike)}`, ML + 6, sy - 6);
 
     // paths
-    const f = p * steps;
-    const full = Math.floor(f);
-    const frac = f - full;
-    ctx.lineWidth = 1.15;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    for (let pi = 0; pi < paths.length; pi++) {
-      const vals = paths[pi].values;
+    let done = 0;
+    for (let pi = 0; pi < N; pi++) {
+      const pp = clamp01((u - launches[pi]) / TRAVEL);
+      if (pp <= 0) continue;
+      const finished = pp >= 1;
+      if (finished) done++;
+      const c = coords.current[pi];
       const col = PALETTE[pi % PALETTE.length];
+      const f = pp * steps;
+      const full = Math.floor(f);
+      const frac = f - full;
+
+      // faint full trace
       ctx.strokeStyle = col;
-      ctx.globalAlpha = 0.36;
+      ctx.globalAlpha = finished ? 0.24 : 0.34;
+      ctx.lineWidth = 1.1;
       ctx.beginPath();
-      ctx.moveTo(X(0), Y(vals[0]));
+      ctx.moveTo(c.xs[0], c.ys[0]);
       let k = 1;
-      for (; k <= full && k < vals.length; k++) ctx.lineTo(X(k), Y(vals[k]));
-      let lx, ly;
+      for (; k <= full && k <= steps; k++) ctx.lineTo(c.xs[k], c.ys[k]);
+      let hx, hy;
       if (full < steps) {
-        const a = vals[Math.min(full, vals.length - 1)];
-        const b = vals[Math.min(full + 1, vals.length - 1)];
-        lx = X(full) + (X(full + 1) - X(full)) * frac;
-        ly = Y(a + (b - a) * frac);
-        ctx.lineTo(lx, ly);
+        hx = c.xs[full] + (c.xs[full + 1] - c.xs[full]) * frac;
+        hy = c.ys[full] + (c.ys[full + 1] - c.ys[full]) * frac;
+        ctx.lineTo(hx, hy);
       } else {
-        lx = X(steps);
-        ly = Y(vals[vals.length - 1]);
+        hx = c.xs[steps];
+        hy = c.ys[steps];
       }
       ctx.stroke();
-      // glowing leading head
-      ctx.globalAlpha = 0.95;
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(lx, ly, 1.7, 0, Math.PI * 2);
-      ctx.fill();
+
+      // bright comet tail (last few segments) + glowing head while active
+      if (!finished) {
+        const tailStart = Math.max(0, full - 7);
+        ctx.globalAlpha = 0.85;
+        ctx.lineWidth = 1.7;
+        ctx.beginPath();
+        ctx.moveTo(c.xs[tailStart], c.ys[tailStart]);
+        for (let j = tailStart + 1; j <= full && j <= steps; j++) ctx.lineTo(c.xs[j], c.ys[j]);
+        ctx.lineTo(hx, hy);
+        ctx.stroke();
+
+        ctx.globalAlpha = 1;
+        ctx.shadowColor = col;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
     }
     ctx.globalAlpha = 1;
+    return done;
   };
 
-  const drawHist = (p) => {
+  const drawHist = (completedFrac) => {
     const cv = histCv.current;
     if (!cv) return;
     const ctx = cv.getContext("2d");
     const W = size.current.hW, H = size.current.hH;
-    const ml = 50, mr = 14, mt = 10, mb = 24;
-    const plotW = W - ml - mr, plotH = H - mt - mb;
+    const plotW = W - ML - MR, plotH = H - MT - MB;
     const n = histogram.length;
     const bw = plotW / n;
-    const grow = easeInOut(Math.min(1, p * 1.04));
+    const grow = easeOut(clamp01(completedFrac));
 
     ctx.clearRect(0, 0, W, H);
     ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
@@ -201,36 +262,43 @@ export default function MonteCarloViz({
       const h = (b.count / histMax) * plotH * grow;
       const itm = kind === "call" ? b.price >= strike : b.price <= strike;
       ctx.fillStyle = itm ? "#34d399" : "#3f4a5e";
-      const bx = ml + i * bw;
-      ctx.fillRect(bx + 0.5, mt + plotH - h, Math.max(1, bw - 1), h);
+      const bx = ML + i * bw;
+      ctx.fillRect(bx + 0.5, MT + plotH - h, Math.max(1, bw - 1), h);
     }
 
-    // strike marker
     const [p0, p1] = priceRange;
-    const sx = ml + ((strike - p0) / (p1 - p0 || 1)) * plotW;
-    if (sx >= ml && sx <= W - mr) {
+    const sx = ML + ((strike - p0) / (p1 - p0 || 1)) * plotW;
+    if (sx >= ML && sx <= W - MR) {
       ctx.strokeStyle = "#f43f5e";
       ctx.setLineDash([5, 4]);
       ctx.lineWidth = 1.3;
       ctx.beginPath();
-      ctx.moveTo(sx, mt);
-      ctx.lineTo(sx, mt + plotH);
+      ctx.moveTo(sx, MT);
+      ctx.lineTo(sx, MT + plotH);
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    // price labels
     ctx.fillStyle = "#64748b";
     ctx.textAlign = "center";
     for (let g = 0; g <= 4; g++) {
       const pr = p0 + (p1 - p0) * (g / 4);
-      ctx.fillText(dollars(pr), ml + plotW * (g / 4), H - 7);
+      ctx.fillText(dollars(pr), ML + plotW * (g / 4), H - 8);
     }
   };
 
-  const drawAll = (p) => {
-    drawPaths(p);
-    drawHist(p);
+  const renderFrame = (u) => {
+    const done = drawPaths(u) || 0;
+    const cf = N ? done / N : 0;
+    drawHist(cf);
+    // throttle React updates: only when the integer count or estimate ticks
+    const damp = mcPrice * (1 + 0.05 * Math.cos(cf * 14) * (1 - cf));
+    const est = cf > 0 ? damp : 0;
+    if (done !== lastStat.current.done || Math.abs(est - lastStat.current.est) > 0.01) {
+      lastStat.current = { done, est };
+      setCompleted(done);
+      setEstimate(est);
+    }
   };
 
   // animation driver — replays whenever a new simulation arrives (runId)
@@ -238,17 +306,20 @@ export default function MonteCarloViz({
     if (!domain) return undefined;
     measure();
     setRunning(true);
+    setCompleted(0);
+    setEstimate(0);
+    lastStat.current = { done: -1, est: -1 };
     prog.current = 0;
     let start = null;
     const tick = (ts) => {
       if (start === null) start = ts;
-      const lin = Math.min(1, (ts - start) / DURATION);
-      prog.current = easeInOut(lin);
-      drawAll(prog.current);
-      setPct(Math.round(lin * 100));
-      if (lin < 1) {
+      const u = clamp01((ts - start) / DURATION);
+      prog.current = u;
+      renderFrame(u);
+      if (u < 1) {
         raf.current = requestAnimationFrame(tick);
       } else {
+        renderFrame(1);
         setRunning(false);
       }
     };
@@ -262,32 +333,46 @@ export default function MonteCarloViz({
     if (!domain) return undefined;
     const ro = new ResizeObserver(() => {
       measure();
-      drawAll(prog.current || 1);
+      renderFrame(prog.current || 1);
     });
     if (pathWrap.current) ro.observe(pathWrap.current);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
 
+  const pctDone = N ? Math.round((completed / N) * 100) : 0;
+
   return (
-    <div className="space-y-5">
-      {/* header + live progress */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      {/* header + live telemetry */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
           <h3 className="text-base font-semibold text-white">Monte Carlo Simulation</h3>
           {infoEntry && <InfoButton entry={infoEntry} accent="#34d399" size={15} />}
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`h-1.5 w-1.5 rounded-full ${running ? "animate-pulse bg-brand-400" : "bg-up"}`} />
-          <span className="tnum text-xs text-gray-400">
-            {ready ? (running ? `Simulating ${paths.length} paths… ${pct}%` : "Converged") : "Awaiting run"}
-          </span>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-gray-500">Sample paths</p>
+            <p className="tnum text-sm font-semibold text-white">
+              {completed}<span className="text-gray-500"> / {N || 0}</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-gray-500">MC estimate</p>
+            <p className="tnum text-sm font-semibold text-brand-300">
+              {estimate > 0 ? usd2(estimate) : "—"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`h-1.5 w-1.5 rounded-full ${running ? "animate-pulse bg-brand-400" : "bg-up"}`} />
+            <span className="text-xs text-gray-400">{ready ? (running ? "Running" : "Converged") : "Idle"}</span>
+          </div>
         </div>
       </div>
       <div className="h-1 w-full overflow-hidden rounded-full bg-ink-900">
         <div
           className="h-full rounded-full bg-brand-gradient transition-[width] duration-150 ease-out"
-          style={{ width: `${ready ? pct : 0}%` }}
+          style={{ width: `${ready ? pctDone : 0}%` }}
         />
       </div>
 
@@ -301,7 +386,7 @@ export default function MonteCarloViz({
         )}
       </div>
 
-      <div className="border-t border-line/60 pt-4">
+      <div className="border-t border-line/60 pt-3">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
           Terminal Price Distribution · <span className="text-up">green = in-the-money</span>
         </p>

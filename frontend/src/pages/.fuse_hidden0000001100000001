@@ -154,7 +154,6 @@ export default function OptionPricer() {
             histogram={ok ? data.histogram : []}
             strike={ok ? data.strike : Number(form.K)}
             kind={form.kind}
-            mcPrice={ok ? data.mc.price : 0}
             runId={simId}
             infoEntry={GLOSSARY.optionPricer}
             loading={loading}
