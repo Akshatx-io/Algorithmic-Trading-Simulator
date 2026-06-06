@@ -13,7 +13,8 @@ import { priceOption } from "../services/optionService";
 import { GLOSSARY } from "../utils/glossary";
 
 const PATH_COLORS = ["#60a5fa", "#34d399", "#a78bfa", "#f472b6", "#fbbf24", "#22d3ee"];
-const usd = (n) => `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const usd = (n) =>
+  `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** Memoized fan-of-paths chart — re-renders only when the simulation changes. */
 const PathFan = memo(function PathFan({ rows, pathIds, strike }) {
@@ -49,7 +50,7 @@ const TerminalHist = memo(function TerminalHist({ data, strike }) {
         <Tooltip
           contentStyle={{ backgroundColor: "#0b1120", border: "1px solid #334155", borderRadius: "8px", color: "#e2e8f0" }}
           formatter={(v) => [v, "paths"]}
-          labelFormatter={(l) => `S_T ≈ ${usd(l)}`}
+          labelFormatter={(l) => `S_T ~ ${usd(l)}`}
         />
         <ReferenceLine x={strike} stroke="#f43f5e" strokeDasharray="5 4" />
         <Bar dataKey="count" radius={[2, 2, 0, 0]} isAnimationActive={false}>
@@ -134,6 +135,8 @@ export default function OptionPricer() {
     });
   }, [data, ok]);
 
+  const nPaths = ok ? Number(data.inputs?.n_paths ?? form.n) : Number(form.n);
+
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
       {/* LEFT: inputs + results */}
@@ -159,7 +162,7 @@ export default function OptionPricer() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <NumField label="Spot (S₀)" value={form.S} onChange={set("S")} step="1" min="0" />
+            <NumField label="Spot (S0)" value={form.S} onChange={set("S")} step="1" min="0" />
             <NumField label="Strike (K)" value={form.K} onChange={set("K")} step="1" min="0" />
             <NumField label="Expiry (years)" value={form.T} onChange={set("T")} step="0.25" min="0" />
             <NumField label="Volatility (%)" value={form.volPct} onChange={set("volPct")} step="1" min="0" />
@@ -170,7 +173,7 @@ export default function OptionPricer() {
           <button onClick={() => setRunKey((k) => k + 1)} disabled={loading}
             className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gradient py-2.5 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-50">
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Dices size={16} />}
-            {loading ? "Simulating…" : "Run Simulation"}
+            {loading ? "Simulating..." : "Run Simulation"}
           </button>
         </Card>
 
@@ -207,11 +210,14 @@ export default function OptionPricer() {
       {/* RIGHT: charts */}
       <div className="space-y-6 xl:col-span-2">
         <Card>
-          <CardHeader title="Monte Carlo Price Paths" subtitle={ok ? `${data.inputs.n.toLocaleString()} paths simulated` : "GBM simulation"}
-            action={<InfoButton entry={GLOSSARY.optionPricer} accent="#34d399" size={16} />} />
+          <CardHeader
+            title="Monte Carlo Price Paths"
+            subtitle={ok ? `${nPaths.toLocaleString()} paths simulated` : "GBM simulation"}
+            action={<InfoButton entry={GLOSSARY.optionPricer} accent="#34d399" size={16} />}
+          />
           <CardBody>
             {loading ? (
-              <div className="flex h-[360px] items-center justify-center text-gray-500">Simulating price paths…</div>
+              <div className="flex h-[360px] items-center justify-center text-gray-500">Simulating price paths...</div>
             ) : !ok ? (
               <div className="flex h-[360px] items-center justify-center text-gray-500">Adjust inputs and run the simulation.</div>
             ) : (
@@ -221,10 +227,10 @@ export default function OptionPricer() {
         </Card>
 
         <Card>
-          <CardHeader title="Terminal Price Distribution" subtitle="Simulated S_T at expiry · green = in-the-money" />
+          <CardHeader title="Terminal Price Distribution" subtitle="Simulated price at expiry; green = in-the-money" />
           <CardBody>
             {ok ? <TerminalHist data={data.histogram} strike={data.strike} /> : (
-              <div className="flex h-[280px] items-center justify-center text-gray-500">—</div>
+              <div className="flex h-[280px] items-center justify-center text-gray-500">-</div>
             )}
           </CardBody>
         </Card>
