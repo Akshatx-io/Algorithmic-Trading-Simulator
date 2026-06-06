@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ResponsiveContainer, ComposedChart, AreaChart, Area, Line, Scatter,
+  ResponsiveContainer, ComposedChart, AreaChart, Area, Line,
   XAxis, YAxis, Tooltip, CartesianGrid,
 } from "recharts";
 import { FlaskConical, Loader2, TrendingUp, TrendingDown } from "lucide-react";
@@ -188,7 +188,7 @@ export default function Backtester() {
                 <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={60} />
                 <YAxis tickFormatter={kfmt} tick={{ fill: "#94a3b8", fontSize: 11 }} tickLine={false} axisLine={false} width={48} domain={["auto", "auto"]} />
                 <Tooltip {...tip} formatter={(v, n) => [money(v), n === "equity" ? "Strategy" : "Buy & Hold"]} />
-                <Area dataKey="equity" stroke="none" fill="url(#eq)" isAnimationActive={false} />
+                <Area dataKey="equity" stroke="none" fill="url(#eq)" isAnimationActive={false} tooltipType="none" legendType="none" />
                 <Line dataKey="benchmark" stroke="#64748b" strokeWidth={1.8} dot={false} isAnimationActive={false} />
                 <Line dataKey="equity" stroke="#34d399" strokeWidth={2.4} dot={false} isAnimationActive={false} />
               </ComposedChart>
@@ -228,10 +228,10 @@ export default function Backtester() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
                   <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={60} />
                   <YAxis tickFormatter={(v) => `$${Math.round(v)}`} tick={{ fill: "#94a3b8", fontSize: 11 }} tickLine={false} axisLine={false} width={48} domain={["auto", "auto"]} />
-                  <Tooltip {...tip} formatter={(v, n) => [`$${Number(v).toFixed(2)}`, n]} />
+                  <Tooltip {...tip} formatter={(v) => [`$${Number(v).toFixed(2)}`, "Price"]} />
                   <Line dataKey="price" stroke="#60a5fa" strokeWidth={1.6} dot={false} isAnimationActive={false} />
-                  <Scatter dataKey="buy" fill="#34d399" isAnimationActive={false} />
-                  <Scatter dataKey="sell" fill="#f43f5e" isAnimationActive={false} />
+                  <Line dataKey="buy" stroke="transparent" connectNulls={false} isAnimationActive={false} tooltipType="none" legendType="none" dot={{ r: 4, fill: "#34d399", stroke: "#0b1120", strokeWidth: 1 }} />
+                  <Line dataKey="sell" stroke="transparent" connectNulls={false} isAnimationActive={false} tooltipType="none" legendType="none" dot={{ r: 4, fill: "#f43f5e", stroke: "#0b1120", strokeWidth: 1 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             ) : <div className="flex h-[210px] items-center justify-center text-gray-500">—</div>}
