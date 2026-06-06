@@ -149,7 +149,6 @@ export default function App() {
             <Route path="options"    element={<OptionPricer />} />
             <Route path="vol-surface" element={<VolSurface />} />
             <Route path="vol-forecast" element={<VolForecast />} />
-            <Route path="backtest" element={<Backtester />} />
             <Route path="paper-account" element={<PaperAccount />} />
             <Route path="account"    element={<Account />} />
           </Route>

@@ -9,7 +9,6 @@ import {
   Sigma,
   Box,
   CalendarClock,
-  FlaskConical,
   Settings,
   LogOut,
   Activity,
@@ -28,7 +27,6 @@ const NAV = [
   { to: "/options", label: "Options", icon: Sigma },
   { to: "/vol-surface", label: "Vol Surface", icon: Box },
   { to: "/vol-forecast", label: "Forecaster", icon: CalendarClock },
-  { to: "/backtest", label: "Backtester", icon: FlaskConical },
   { to: "/account", label: "Settings", icon: Settings },
 ];
 
@@ -42,7 +40,6 @@ const META = {
   "/options": ["Monte Carlo Option Pricer", "GBM simulation + Black-Scholes"],
   "/vol-surface": ["Neural Volatility Surface", "Implied vol across strikes x expiries"],
   "/vol-forecast": ["Vol Surface Forecaster", "Today vs forecast with confidence band"],
-  "/backtest": ["Strategy Backtester", "Rule-based strategy vs buy-and-hold"],
   "/paper-account": ["Paper Account", "Your simulated trading account"],
   "/account": ["Account Settings", "Profile, security & preferences"],
 };

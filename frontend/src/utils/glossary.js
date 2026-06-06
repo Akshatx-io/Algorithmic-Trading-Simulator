@@ -239,6 +239,46 @@ export const GLOSSARY = {
     formula: "Var(h) = sigma^2 (1 - phi^2h) / (1 - phi^2)",
     interpretation: "Wider band = less certainty. It grows with the forecast horizon.",
   },
+  backtest: {
+    title: "Strategy Backtester",
+    subtitle: "Rule-based strategy vs buy-and-hold",
+    what:
+      "Simulates a trading rule bar-by-bar over historical prices with realistic transaction costs, then compares the resulting equity curve against simply buying and holding the asset. Signals are shifted one bar before they trade, so there is no lookahead bias.",
+    points: [
+      "Equity curve = how $100k would have grown following the strategy.",
+      "The benchmark is buy-and-hold of the same asset over the same window.",
+      "Alpha is the strategy total return minus the benchmark total return.",
+    ],
+    interpretation:
+      "A good strategy beats buy-and-hold on a risk-adjusted basis (higher Sharpe, shallower drawdown), not just on raw return.",
+  },
+  cagr: {
+    title: "CAGR",
+    what: "Compound annual growth rate - the smoothed yearly return that would produce the same final equity.",
+    formula: "(end / start)^(1/years) - 1",
+  },
+  sortino: {
+    title: "Sortino Ratio",
+    what: "Like Sharpe, but penalizes only downside volatility - it ignores upside swings.",
+    formula: "mean return / downside deviation x sqrt(252)",
+    interpretation: "Higher is better; rewards strategies whose volatility is mostly to the upside.",
+  },
+  calmar: {
+    title: "Calmar Ratio",
+    what: "Annualized return divided by the worst drawdown - return earned per unit of pain.",
+    formula: "CAGR / |max drawdown|",
+    interpretation: "Above ~1 is solid; above 3 is excellent.",
+  },
+  alpha: {
+    title: "Alpha vs Buy-and-Hold",
+    what: "Excess total return of the strategy over simply buying and holding the asset.",
+    interpretation: "Positive alpha means the timing rules added value beyond the market move.",
+  },
+  exposure: {
+    title: "Exposure",
+    what: "Share of the backtest period the strategy was actually invested (in the market).",
+    interpretation: "Lower exposure with similar returns means capital was at risk less of the time.",
+  },
 };
 
 export default GLOSSARY;

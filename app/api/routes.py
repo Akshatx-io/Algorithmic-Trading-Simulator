@@ -55,6 +55,7 @@ from app.quant.regime import analyze_regime
 from app.quant.optimizer import optimize_portfolio
 from app.quant.option_pricer import price_option
 from app.quant.vol_surface import build_vol_surface, build_vol_forecast
+from app.quant.backtester import run_backtest
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -407,6 +408,28 @@ def volatility_forecast(
     """Forecast how the vol surface evolves h days out via mean-reverting AR(1)
     factor dynamics, with a 95% band and today-vs-forecast comparison."""
     return build_vol_forecast(s, r, base_vol, skew, curv, term, horizon)
+
+
+# -----------------------------------------------------------------------------
+# Strategy Backtester (Track C)
+# -----------------------------------------------------------------------------
+@router.get("/backtest")
+def backtest(
+    symbol: str = Query("AAPL"),
+    strategy: str = Query("sma", pattern="^(sma|ema|rsi|momentum|bollinger)$"),
+    fast: int = Query(20, ge=2, le=200),
+    slow: int = Query(50, ge=3, le=400),
+    rsi_period: int = Query(14, ge=2, le=60),
+    rsi_buy: float = Query(30, ge=1, le=99),
+    rsi_sell: float = Query(55, ge=1, le=99),
+    cost_bps: float = Query(5, ge=0, le=100),
+    years: int = Query(3, ge=1, le=10),
+    initial: float = Query(100000, gt=0),
+):
+    """Backtest a rule-based strategy over deterministic history with transaction
+    costs, returning equity vs buy-and-hold, drawdown, trade signals, and metrics."""
+    return run_backtest(symbol, strategy, fast, slow, rsi_period, rsi_buy,
+                        rsi_sell, cost_bps, years, initial)
 
 
 # -----------------------------------------------------------------------------
