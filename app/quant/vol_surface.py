@@ -81,10 +81,10 @@ def build_vol_surface(
     skew: float = -0.16,
     curv: float = 0.7,
     term: float = 0.05,
-    width: float = 0.45,
+    width: float = 0.52,
     max_t: float = 2.0,
-    n_strikes: int = 17,
-    n_expiries: int = 14,
+    n_strikes: int = 31,
+    n_expiries: int = 26,
 ) -> dict:
     if s <= 0 or base_vol <= 0:
         return {"status": "invalid_params"}
@@ -103,7 +103,7 @@ def build_vol_surface(
     # synthesize market prices, inject quote noise, then re-imply
     price = _bs_call(s, Kg, Tg, r, true_iv)
     rng = np.random.default_rng(7)
-    price = price * (1.0 + rng.normal(0.0, 0.002, price.shape))
+    price = price * (1.0 + rng.normal(0.0, 0.0042, price.shape))
     intrinsic = np.maximum(s - Kg * np.exp(-r * Tg), 0.0)
     price = np.clip(price, intrinsic + 1e-6, s - 1e-6)
 

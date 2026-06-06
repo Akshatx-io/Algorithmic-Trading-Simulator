@@ -44,7 +44,7 @@ export default function VolSurface() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("3d");
-  const [spin, setSpin] = useState(true);
+  const [spin, setSpin] = useState(false);
   const timer = useRef(0);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
@@ -138,7 +138,7 @@ export default function VolSurface() {
                     spin ? "border-brand-500/40 bg-brand-500/10 text-brand-300" : "border-line bg-ink-800 text-gray-400 hover:text-white"
                   }`}
                 >
-                  <RotateCw size={13} className={spin ? "animate-spin-slow" : ""} /> Auto-rotate
+                  <RotateCw size={13} /> Auto-rotate
                 </button>
               )}
               <div className="flex rounded-lg bg-ink-900 p-1">
@@ -153,13 +153,13 @@ export default function VolSurface() {
           </div>
 
           {!ok ? (
-            <div className="flex h-[460px] items-center justify-center text-sm text-gray-500">
+            <div className="flex h-[470px] items-center justify-center text-sm text-gray-500">
               {loading ? "Fitting surface…" : "Adjust inputs to build the surface."}
             </div>
           ) : view === "3d" ? (
-            <VolSurface3D iv={data.iv} zmin={data.zmin} zmax={data.zmax} autoRotate={spin} height={460} />
+            <VolSurface3D iv={data.iv} zmin={data.zmin} zmax={data.zmax} moneyness={data.moneyness} expiries={data.expiries} autoRotate={spin} height={470} />
           ) : (
-            <VolHeatmap iv={data.iv} moneyness={data.moneyness} expiries={data.expiries} zmin={data.zmin} zmax={data.zmax} height={460} />
+            <VolHeatmap iv={data.iv} moneyness={data.moneyness} expiries={data.expiries} zmin={data.zmin} zmax={data.zmax} height={470} />
           )}
           <p className="mt-2 text-center text-xs text-gray-500">
             X: moneyness (strike / spot) · Y: time to expiry · {view === "3d" ? "Z & color" : "color"}: implied vol · drag to rotate
