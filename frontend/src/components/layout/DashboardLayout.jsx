@@ -34,6 +34,7 @@ const META = {
   "/regime": ["Market Regime", "Bull / Bear / Sideways detection"],
   "/optimizer": ["Smart Portfolio Optimizer", "Monte-Carlo efficient frontier"],
   "/options": ["Monte Carlo Option Pricer", "GBM simulation + Black-Scholes"],
+  "/paper-account": ["Paper Account", "Your simulated trading account"],
   "/account": ["Account Settings", "Profile, security & preferences"],
 };
 
@@ -81,20 +82,29 @@ export default function DashboardLayout() {
         </nav>
 
         <div className="border-t border-line p-3">
-          <div className="flex items-center gap-3 rounded-xl px-3 py-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-sm font-semibold text-white">
-              {initial}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white">
-                {user?.username || "Trader"}
-              </p>
-              <p className="text-xs text-gray-500">Paper account</p>
-            </div>
+          <div className="flex items-center gap-1">
+            <NavLink
+              to="/paper-account"
+              className={({ isActive }) =>
+                `flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 transition ${
+                  isActive ? "bg-brand-500/15 ring-1 ring-brand-500/30" : "hover:bg-ink-700/60"
+                }`
+              }
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-sm font-semibold text-white">
+                {initial}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-white">
+                  {user?.username || "Trader"}
+                </p>
+                <p className="text-xs text-gray-500">Paper account</p>
+              </div>
+            </NavLink>
             <button
               onClick={() => logout()}
               title="Log out"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-down/10 hover:text-down"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-down/10 hover:text-down"
             >
               <LogOut size={16} />
             </button>

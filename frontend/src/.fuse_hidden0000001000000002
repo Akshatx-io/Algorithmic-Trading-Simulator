@@ -144,7 +144,6 @@ export default function App() {
             <Route path="regime"     element={<MarketRegime />} />
             <Route path="optimizer"  element={<Optimizer />} />
             <Route path="options"    element={<OptionPricer />} />
-            <Route path="paper-account" element={<PaperAccount />} />
             <Route path="account"    element={<Account />} />
           </Route>
 
