@@ -237,15 +237,14 @@ export default function MonteCarloViz({
         ctx.lineTo(hx, hy);
         ctx.stroke();
 
-        ctx.fillStyle = col;
-        ctx.globalAlpha = 0.22;
-        ctx.beginPath();
-        ctx.arc(hx, hy, 5, 0, Math.PI * 2);
-        ctx.fill();
         ctx.globalAlpha = 1;
+        ctx.shadowColor = col;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = col;
         ctx.beginPath();
-        ctx.arc(hx, hy, 2.2, 0, Math.PI * 2);
+        ctx.arc(hx, hy, 2.3, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
       }
     }
     ctx.globalAlpha = 1;
