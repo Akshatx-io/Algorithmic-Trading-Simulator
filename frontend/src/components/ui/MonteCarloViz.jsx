@@ -27,7 +27,7 @@ const HIST_H = 252;
 
 // Pacing (normalized 0..1 across DURATION). Deliberate, institutional tempo.
 const DURATION = 7600;   // ms for a full run (deliberate)
-const STAGGER = 0.68;    // launch spread
+const STAGGER = 0.46;    // launch spread (STAGGER + TRAVEL must stay <= 1)
 const TRAVEL = 0.5;      // per-path travel time
 
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
