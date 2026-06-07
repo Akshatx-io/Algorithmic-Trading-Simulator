@@ -2,7 +2,7 @@
 
 # Algorithmic Trading Simulator
 
-### *A production-grade quantitative trading platform — designed like fintech ships, documented like Anthropic ships.*
+### *A production-grade quantitative trading platform — engineered like a trading firm ships, documented like a staff engineer reviews.*
 
 <br/>
 
@@ -29,11 +29,11 @@
 
 This is **not** another React-and-Express to-do app dressed up as a trading dashboard.
 
-This is a full-stack **quantitative trading simulator** built on the same architectural principles you'd find at a real trading firm — a **five-layer backend**, an **async event bus**, **idempotent order execution**, **factor-driven signals**, **FIFO PnL accounting**, **refresh-token rotation in Redis**, and a frontend split between **Zustand** (client state) and **TanStack Query** (server state) with a **WebSocket → Query invalidation bridge**.
+It is a full-stack **quantitative trading terminal** built on the same architectural principles you'd find at a real trading desk — a **layered async backend**, **idempotent order execution**, **FIFO PnL accounting**, **factor-driven signals**, **refresh-token rotation in Redis**, and a frontend split between **Zustand** (client state) and **TanStack Query** (server state) with a **WebSocket → Query invalidation bridge**.
 
-It ships with three documents totaling ~210 KB of engineering rationale: a forensic **audit** of the original codebase, a target **architecture** specification, and a phased **roadmap** with interview-defensible talking points for every commit.
+On top of that platform sits a **Quantitative Research Lab**: six self-contained quant modules — option pricing, a 3D volatility surface and its forecaster, a strategy backtester, a machine-learning return predictor, and an earnings-call sentiment analyzer — each backed by genuine, from-scratch numerical code (no black-box library hand-waving) and a purpose-built, interactive visualization.
 
-> **Why does that matter?** Because anyone can stack technologies. Few people can defend the choices behind them. This project is built to be defended.
+> **Why it matters:** anyone can stack technologies. Few can defend the choices *and* implement the mathematics behind them. This project is built to be defended — line by line, equation by equation.
 
 ---
 
@@ -43,40 +43,66 @@ It ships with three documents totaling ~210 KB of engineering rationale: a foren
 git clone https://github.com/No-Len-77/Algorithmic-Trading-Simulator.git
 cd Algorithmic-Trading-Simulator
 cp .env.example .env
-docker compose up
+docker compose up                     # full stack: postgres · redis · api · frontend
+```
+
+**Local dev (no Docker):**
+
+```bash
+# backend
+uvicorn main:app --reload --port 8000
+# frontend
+cd frontend && npm install && npm run dev
 ```
 
 Then visit:
 
 | Surface | URL | What you'll see |
 |---|---|---|
-| **Trading dashboard** | <http://localhost:5173> | The actual app — register, log in, trade |
+| **Trading terminal** | <http://localhost:5173> | The app — register, log in, trade, explore the Quant Lab |
 | **OpenAPI explorer** | <http://localhost:8000/docs> | Interactive Swagger UI for every endpoint |
 | **Health probe** | <http://localhost:8000/health> | JSON status + DB connectivity |
-| **pgAdmin** *(optional)* | <http://localhost:5050> | `docker compose --profile tools up` |
-| **Redis Commander** *(optional)* | <http://localhost:8081> | Inspect refresh tokens + cache |
 
-Register → log in → place a trade → watch your portfolio update live over WebSocket.
+Register → log in → place a trade → watch the portfolio update live over WebSocket → open the Quant Lab.
+
+---
+
+## ⚡ Quantitative Research Lab
+
+The differentiator. Six modules, each a complete vertical slice — a numerically-honest engine, a typed API, and a bespoke, buttery visualization. Every metric on every screen has an inline ⓘ deep-dive explaining the math.
+
+| Module | What it does | The mathematics under the hood |
+|---|---|---|
+| **Monte Carlo Option Pricer** | Prices European options and renders the simulation *running*, path by path | Risk-neutral **GBM** simulation, antithetic variance, **Black-Scholes** closed-form benchmark, full **Greeks** (Δ Γ ν Θ ρ), 95% confidence interval, terminal-price distribution |
+| **Neural Volatility Surface** | Interactive **3D implied-vol surface** across strikes × expiries (+ heatmap) | Parametric **SVI/SABR-style** smile → market-price grid → **Newton-Raphson IV inversion** at every node (round-trip error ≈ 1e-15) → C¹ smoothing fit |
+| **Vol Surface Forecaster** | Forecasts how the surface evolves *N* days out with a confidence band | Surface decomposed into **level / skew / term** factors, each a mean-reverting **AR(1)/Ornstein-Uhlenbeck** process fit by least squares, analytic forecast variance |
+| **Strategy Backtester** | Runs rule-based strategies vs buy-and-hold, lookahead-safe | SMA/EMA/RSI/momentum/Bollinger signals, transaction costs, **Sharpe · Sortino · Calmar**, max drawdown, profit factor, per-trade win rate |
+| **Stock Return Predictor** | Predicts next-day returns and stress-tests the signal | **Random Forest written from scratch in NumPy** (bagging + random feature subsets + variance-reduction CART), feature pipeline, out-of-sample R²/IC/directional accuracy, **Monte Carlo bootstrap** equity fan |
+| **Earnings-Call Sentiment** | Turns transcript text into a tradable signal | **Loughran-McDonald-style financial NLP** (negation flip + intensifiers) → **event-study backtest** (CAAR around the announcement, IC, hit rate, long-short *t*-statistic) |
+
+**Engineering notes that make it credible:**
+
+- The **3D surface and the Monte Carlo animation are pure `<canvas>` + `requestAnimationFrame`** — manual 3D→2D projection, painter's-algorithm depth sorting, per-quad Lambert shading, a perceptual colormap, and a clock-driven animation loop that auto-stops at convergence. **Zero 3D dependencies**, 60 fps.
+- The **Random Forest and the IV solver are implemented from first principles in NumPy** — deterministic, dependency-free, and fast (sub-second). A HuggingFace transformer or scikit-learn estimator is a clean drop-in upgrade, not a crutch.
+- Results are **honest**: daily returns show R² ≈ 0 and ~53% directional accuracy, the predictor often *loses* to buy-and-hold, and the sentiment signal is reported with a significance *t*-stat. That realism is the point.
 
 ---
 
 ## The methodology — *audit first, code second*
 
 ```
-┌─────────────┐       ┌──────────────┐       ┌───────────┐       ┌──────────────┐
-│   AUDIT     │──────▶│ ARCHITECTURE │──────▶│  ROADMAP  │──────▶│ IMPLEMENTATION│
-│  63 KB      │       │   81 KB      │       │   66 KB   │       │   phased      │
-└─────────────┘       └──────────────┘       └───────────┘       └──────────────┘
-   What's wrong         What we want            When + how        Ship & defend
-   in the current        the target              we get there      every commit
-   codebase              system to be
+┌─────────────┐     ┌──────────────┐     ┌───────────┐     ┌───────────────┐
+│   AUDIT     │────▶│ ARCHITECTURE │────▶│  ROADMAP  │────▶│ IMPLEMENTATION │
+└─────────────┘     └──────────────┘     └───────────┘     └───────────────┘
+  What's wrong        The target           When + how         Ship & defend
+  in the codebase     system to be         we get there       every commit
 ```
 
-| Document | Size | What it contains |
-|---|---|---|
-| [`AUDIT.md`](./AUDIT.md) | 63 KB · 17 sections | Forensic teardown of the original codebase with **file:line references**, **severity ratings (P0/P1/P2/P3)** and a **top-25 punchlist**. |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 81 KB · 16 sections | The target system. **Folder layout**, **service boundaries**, **event flows**, **WebSocket protocol**, **trade-flow sequence diagram**, **ADR discipline**. |
-| [`ROADMAP.md`](./ROADMAP.md) | 66 KB · 13 phases | The execution plan. **Ordered tasks**, **acceptance criteria**, **duration estimates**, and — most importantly — **interview talking points** for every phase. |
+| Document | What it contains |
+|---|---|
+| [`AUDIT.md`](./AUDIT.md) | Forensic teardown of the original codebase with **file:line references**, **severity ratings (P0–P3)**, and a **top-25 punchlist**. |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | The target system: **folder layout**, **service boundaries**, **event flows**, **WebSocket protocol**, **trade-flow sequence diagram**, **ADR discipline**. |
+| [`ROADMAP.md`](./ROADMAP.md) | Phased execution plan: **ordered tasks**, **acceptance criteria**, and **interview talking points** for every phase. |
 
 This is the discipline that separates a portfolio project from a defensible engineering artifact.
 
@@ -84,23 +110,17 @@ This is the discipline that separates a portfolio project from a defensible engi
 
 ## Architecture at a glance
 
-<p align="center">
-  <img src="./docs/architecture.svg" alt="Algorithmic Trading Simulator — system architecture diagram showing the six-layer stack from Browser through Nginx, REST and WebSocket APIs, Service Layer, Domain/Repositories/Event Bus, down to PostgreSQL, Redis, and the background engines." width="100%"/>
-</p>
-
-The same architecture, rendered live as a Mermaid graph (works inside GitHub, VS Code, and any markdown viewer):
-
 ```mermaid
 flowchart TB
-    Browser[Browser - React 19 Vite Zustand TanStack Query]
-    Nginx[Nginx TLS WebSocket upgrade]
-    REST[FastAPI REST api v1]
-    WS[FastAPI WebSocket api v1 ws]
-    Services[Service Layer auth order portfolio risk]
-    Domain[Domain FIFO PnL state machine risk rules]
-    Repos[Repositories SQLAlchemy 2.0 async]
-    Bus[In-process Event Bus]
-    Engines[Background Engines market feed candles signals matcher]
+    Browser[Browser - React 19 / Vite / Zustand / TanStack Query]
+    Nginx[Nginx - TLS + WebSocket upgrade]
+    REST[FastAPI REST /api/v1]
+    WS[FastAPI WebSocket /api/v1/ws]
+    Services[Service Layer - auth / order / portfolio / risk]
+    Quant[Quant Lab - options / vol surface / backtest / ML / NLP]
+    Domain[Domain - FIFO PnL / state machine / risk rules]
+    Repos[Repositories - SQLAlchemy 2.0 async]
+    Engines[Background Engines - market feed / candles / signals]
     Postgres[(PostgreSQL 16)]
     Redis[(Redis 7)]
 
@@ -108,17 +128,15 @@ flowchart TB
     Nginx --> REST
     Nginx --> WS
     REST --> Services
-    WS --> Bus
+    REST --> Quant
     Services --> Domain
     Services --> Repos
-    Services --> Bus
     Repos --> Postgres
     Services --> Redis
-    Engines --> Bus
-    Bus --> WS
+    Engines --> WS
 ```
 
-The full sequence diagram for one complete trade — browser `POST` → idempotency check → UoW transaction → event emit → WebSocket fan-out → TanStack Query invalidation — lives in [`ARCHITECTURE.md` §12](./ARCHITECTURE.md).
+The full sequence diagram for one complete trade — browser `POST` → idempotency check → transaction → event emit → WebSocket fan-out → TanStack Query invalidation — lives in [`ARCHITECTURE.md` §12](./ARCHITECTURE.md).
 
 ---
 
@@ -134,10 +152,10 @@ The full sequence diagram for one complete trade — browser `POST` → idempote
 - **SQLAlchemy 2.0** (async) + Alembic
 - **PostgreSQL 16** primary store
 - **Redis 7** cache · pub/sub · idempotency
-- **PyJWT** + **bcrypt** (no passlib)
-- **Pydantic v2** for validation
+- **NumPy** — all quant numerics
+- **PyJWT** + **bcrypt**
+- **Pydantic v2** validation
 - **loguru** structured logging
-- **prometheus-client** *(Phase 3.3)*
 
 </td>
 <td valign="top" width="33%">
@@ -148,10 +166,10 @@ The full sequence diagram for one complete trade — browser `POST` → idempote
 - **TailwindCSS 3** + design tokens
 - **Zustand 5** — client state
 - **TanStack Query 5** — server state
-- **lightweight-charts** — candles
 - **Recharts** — analytics
+- **Custom Canvas/rAF** — 3D surface & sims
+- **lucide-react** — iconography
 - **react-hot-toast** — notifications
-- **Framer Motion** — micro-interactions
 
 </td>
 <td valign="top" width="33%">
@@ -164,7 +182,7 @@ The full sequence diagram for one complete trade — browser `POST` → idempote
 - **Ruff** lint + format
 - **mypy** type checking
 - **pytest** + pytest-asyncio
-- **Vitest** *(Phase 2.7)*
+- **ESLint** (flat config)
 - **uv** for hashed lockfiles
 
 </td>
@@ -175,50 +193,25 @@ The full sequence diagram for one complete trade — browser `POST` → idempote
 
 ## Engineering highlights
 
-The things you can put on a slide. These are the choices I made and can defend.
+The things you can put on a slide — choices made deliberately and defended.
 
-### Money is `Decimal`, time is `int`, IDs are `ULID`
-Float arithmetic on currency is an interview disqualifier. All monetary values are `Decimal` end-to-end with explicit quantization at the API boundary. Times are epoch seconds (or ISO-8601 strings at the wire). Domain IDs are ULIDs — sortable, URL-safe, no UUIDv4 randomness penalty.
+### Money is `Decimal`, IDs are sortable, time is explicit
+Float arithmetic on currency is an interview disqualifier. Monetary values use `Decimal` with explicit quantization at the API boundary; timestamps are explicit at the wire.
 
 ### Tokens never touch localStorage
-Access tokens live **in memory only** (Zustand store). Refresh tokens live in an **httpOnly, samesite=lax cookie scoped to `/api/v1/auth`** — unreachable from JavaScript, rotated on every refresh. WebSocket handshake uses a **separate 60-second JWT** so reverse-proxy access logs never contain a long-lived token. *Audit fix [3.1, 3.11, 6.8].*
+Access tokens live **in memory only** (Zustand). Refresh tokens live in an **httpOnly, samesite=lax cookie scoped to `/api/v1/auth`** — unreachable from JS, rotated on every refresh. The WebSocket handshake uses a **separate short-lived JWT** so proxy logs never contain a long-lived token. *Audit [3.1, 3.11, 6.8].*
 
 ### Idempotent mutations
-Every POST/PUT/PATCH/DELETE carries an `X-Idempotency-Key` (UUID). The server hits Redis first — same key + same body → cached response, **same key + different body → 409**, new key → execute. Replay-on-network-error is safe by construction. *Architecture §1.6.*
+Every mutating request carries an idempotency key; the server consults Redis first — same key + same body → cached response, same key + different body → `409`, new key → execute. Replay-on-network-error is safe by construction. *Architecture §1.6.*
 
 ### FIFO over weighted-average cost basis
-Realized PnL uses **FIFO lot matching**, not WAC. This is the correct choice for any system that might one day need a tax audit. The matcher is a pure function in `app/domain/pnl/fifo.py` — 30 lines, property-tested. *ADR-0002.*
+Realized PnL uses **FIFO lot matching** — the correct choice for any system that might one day need a tax audit. The matcher is a pure, property-tested function. *ADR-0002.*
 
-### In-process event bus, not Kafka (yet)
-Engines emit domain events (`PriceTicked`, `OrderFilled`, `SignalGenerated`, etc.). Subscribers — the WebSocket pusher, the audit logger, the equity-snapshot writer — consume from a single bus. **Kafka is deliberately out of scope for Phase 2/3** because the system has one process. The seam is built so swapping to Redis pub/sub (Phase 4) or Kafka (Phase 5) is a one-line change. *Architecture §5.7, ADR-0004.*
+### Quant code is honest and from-scratch
+The IV solver, the Random Forest, the GBM engine, the AR(1) factor model, and the sentiment scorer are all implemented in NumPy/Python from first principles — deterministic, dependency-light, and verifiable (the Newton-Raphson IV inversion round-trips to machine precision). Visualizations are hand-built on `<canvas>` for full control and 60 fps with no 3D libraries.
 
-### `git rm` the dead code
-The original codebase had ~1,900 lines of commented-out previous-generation code. **All deleted.** Three stacked versions of `routes.py`, two competing `PnLEngine` implementations, four iterations of the market-data engine. Phase 2.0 was a single PR titled "kill the commented code" before any new work began. *Audit §3.3, §12.6.*
-
----
-
-## Current status
-
-The roadmap is 13 phases over ~38 working days. Honest progress:
-
-| Phase | Name | Status | What landed |
-|---|---|---|---|
-| **1.0** | Forensic audit | ✅ done | 17-section AUDIT.md, 25-item punchlist |
-| **2.0** | Hygiene sweep | ✅ done | Dead code purged, `pyproject.toml`, `.dockerignore`, multi-stage Dockerfile, ruff CI |
-| **2.1** | Auth hardening | ✅ done | PyJWT + bcrypt, refresh rotation, Zustand authStore, silent refresh, single-flight 401 retry |
-| **2.2** | Database truth | ✅ done | Async SQLAlchemy 2.0, model/migration reconciled, new `orders` + `idempotency_records` tables, async conftest |
-| **2.3** | Service & repository layers | 🚧 next | Strangler-fig the legacy router into `app/api/v1/*`, UnitOfWork pattern, typed repos |
-| **2.4** | PnL & execution correctness | 📋 planned | FIFO PnL service, Decimal money, idempotent order placement, structured risk assessments |
-| **2.5** | Real-time pipeline v1 | 📋 planned | Event bus, topic-based WS, EngineSupervisor, candle flicker fix |
-| **2.6** | Frontend foundations | 📋 planned | Feature-folder reorg, TanStack Query for all server state, incremental chart updates |
-| **2.7** | Test foundations + green CI | 📋 planned | Real test pyramid, k6 WS load test |
-| **3.0** | Premium UI system | 📋 planned | Tokenized design system, micro-interactions, full page redesign |
-| **3.1** | Trading terminal v1 | 📋 planned | All 4 order types, simulated book, recent-trades tape |
-| **3.2** | WS protocol v2 + order matcher | 📋 planned | Sequence numbers, replay-on-reconnect, STOP/STOP-LIMIT fills |
-| **3.3** | Observability + deploy | 📋 planned | Prometheus, Sentry, Fly.io deploy with public demo URL |
-| **4.0** | Quant differentiation | 📋 planned | Pick 2-3 of: regime detection (HMM), convex portfolio optimizer, VaR, ONNX ML, backtest harness |
-
-**Status snapshot:** ~3 of the 13 phases complete + the entire documentation phase. The next ★★★ job-critical milestone is Phase 2.6 (Frontend Foundations) and 3.0 (Premium UI System).
+### Dead code is deleted, not commented
+The original codebase carried ~1,900 lines of commented-out previous-generation code. **All removed** before new work began. *Audit §3.3, §12.6.*
 
 ---
 
@@ -228,37 +221,33 @@ The roadmap is 13 phases over ~38 working days. Honest progress:
 <tr>
 <td valign="top" width="50%">
 
-### ✅ Shipped (Phase 2.0–2.2)
+### ✅ Trading platform
 
-- JWT auth (access + refresh-rotation + WS token)
+- JWT auth (access + refresh rotation + WS token)
 - Reactive frontend auth (Zustand + silent refresh)
 - Real-time market data over WebSocket
 - 1m / 5m / 15m candle aggregation
-- Factor-based signal engine (trend · mean-reversion · momentum · volatility)
-- Portfolio + unrealized/realized PnL
-- Equity history snapshots
+- Factor-based signal engine
+- Portfolio + unrealized/realized FIFO PnL
+- Equity-history snapshots & living equity curve
 - Pre-trade risk gate
-- Async SQLAlchemy 2.0 backend
-- Async conftest + pytest fixtures
-- Multi-stage Docker · ruff CI
+- Paper-account management + reset
+- Async SQLAlchemy 2.0 · multi-stage Docker · CI
 
 </td>
 <td valign="top" width="50%">
 
-### 🚧 Coming (Phase 2.3–4.0)
+### ✅ Quant Lab
 
-- Full order types (MARKET / LIMIT / STOP / STOP-LIMIT)
-- Order state machine with idempotency
-- Structured risk assessments with violations
-- In-process event bus + topic-based WS
-- Server-driven WS heartbeats + reconnect replay
-- Premium dark UI with glassmorphism
-- Mobile-responsive trading terminal
-- Convex portfolio optimizer (CVXPY)
-- HMM-based market regime detection
-- Backtest harness sharing live execution code
-- Prometheus + Grafana observability
-- Public Fly.io demo with one-click trial
+- Monte Carlo **Option Pricer** (animated GBM + Greeks)
+- **Market Regime** detection (KMeans, numpy fallback)
+- Smart **Portfolio Optimizer** (Monte-Carlo frontier)
+- **Neural Volatility Surface** (3D + heatmap)
+- **Vol Surface Forecaster** (AR(1) + confidence band)
+- **Strategy Backtester** (5 strategies vs B&H)
+- **Stock Return Predictor** (NumPy Random Forest + MC)
+- **Earnings-Call Sentiment** (financial NLP + event study)
+- Reusable metric glossary with inline ⓘ deep-dives
 
 </td>
 </tr>
@@ -269,157 +258,94 @@ The roadmap is 13 phases over ~38 working days. Honest progress:
 ## Project structure
 
 <details>
-<summary>📂 <b>Click to expand the full tree</b></summary>
+<summary>📂 <b>Click to expand the tree</b></summary>
 
 ```
 Algorithmic-Trading-Simulator/
-├── 📘 AUDIT.md                     # 63 KB · forensic audit of the original code
-├── 📐 ARCHITECTURE.md              # 81 KB · target system design
-├── 🗺  ROADMAP.md                   # 66 KB · phased implementation plan
-├── 📜 README.md                    # you are here
-├── 📄 LICENSE
-├── 🐍 pyproject.toml               # hashed lockfile · ruff · mypy · pytest config
-├── 🐳 Dockerfile                   # multi-stage: base · api · workers
-├── 🧩 docker-compose.yml           # postgres · redis · api · frontend + tools profile
-├── ⚙  Makefile                      # one-shot dev tasks
-├── 🛠  scripts/cleanup_local.sh     # local cleanup + GitHub helper
+├── AUDIT.md · ARCHITECTURE.md · ROADMAP.md · README.md · LICENSE
+├── pyproject.toml · Dockerfile · docker-compose.yml · Makefile
 │
-├── 🧠 app/                         # FastAPI backend
+├── app/                              # FastAPI backend
 │   ├── api/
-│   │   ├── routes.py               # legacy aggregate router (Phase 2.3 strangler target)
-│   │   └── v1/                     # per-domain v1 routers (canonical going forward)
-│   │       ├── __init__.py         # aggregator
-│   │       └── auth.py             # ✅ Phase 2.1: register · login · refresh · logout · ws-token · me
-│   ├── auth/                       # jwt_handler · password · dependencies (sync + async)
-│   ├── core/                       # config · database · logger
-│   ├── domain/                     # 🚧 Phase 2.3+ — pure business logic
-│   ├── engines/                    # 🚧 Phase 2.5 — supervised async background tasks
-│   ├── execution/                  # execution_engine
-│   ├── infra/                      # redis_client · (event_bus + ws coming)
-│   ├── market/                     # market_data_engine · candle_engine · market_state
-│   ├── ml/                         # predictor (Phase 4 rebuilds via ONNX)
-│   ├── models/                     # SQLAlchemy ORM (User, Order, Trade, Position, ...)
-│   ├── portfolio/                  # pnl_engine · equity_engine · snapshot_service
-│   ├── quant/                      # signal_engine + factor library
-│   ├── repositories/               # 🚧 Phase 2.3 — UnitOfWork + typed repos
-│   ├── risk/                       # risk_engine · daily_loss_engine
-│   ├── schemas/                    # Pydantic request/response models
-│   ├── services/                   # ✅ auth_service (more in Phase 2.3)
-│   └── websocket/                  # connection manager · market stream
+│   │   ├── routes.py                 # aggregate router (REST + WS + Quant Lab)
+│   │   └── v1/                       # per-domain routers
+│   ├── auth/ · core/ · infra/        # jwt · config · db · redis
+│   ├── market/ · portfolio/          # feed · candles · FIFO PnL · equity
+│   ├── execution/ · risk/            # order execution · pre-trade risk
+│   ├── quant/                        # ── Quantitative Research Lab ──
+│   │   ├── signal_engine.py          # factor signals
+│   │   ├── regime/                   # market-regime detection
+│   │   ├── optimizer.py              # Monte-Carlo efficient frontier
+│   │   ├── option_pricer.py          # GBM Monte Carlo + Black-Scholes + Greeks
+│   │   ├── vol_surface.py            # SVI surface + Newton IV solver + forecaster
+│   │   ├── backtester.py             # strategy backtester + metrics
+│   │   ├── return_predictor.py       # NumPy Random Forest + Monte Carlo
+│   │   └── sentiment.py              # financial NLP + event-study backtest
+│   ├── models/ · schemas/ · services/ · websocket/
 │
-├── 🎨 frontend/                    # React 19 + Vite 7 + Tailwind 3
-│   ├── package.json
-│   ├── src/
-│   │   ├── main.jsx                # providers: BrowserRouter · QueryClient · Toaster
-│   │   ├── App.jsx                 # reactive Protected/PublicOnlyRoute via Zustand
-│   │   ├── store/authStore.js      # in-memory access token + persisted user
-│   │   ├── lib/queryClient.js      # TanStack Query defaults
-│   │   ├── hooks/                  # useAuth · useAuthHydration · useMarket
-│   │   ├── services/               # apiClient · authService · websocket
-│   │   ├── pages/                  # Login · Register · Dashboard · Portfolio · Trade · ...
-│   │   └── components/             # layout · charts · trading · common
+├── frontend/                         # React 19 + Vite 7 + Tailwind 3
+│   └── src/
+│       ├── pages/                    # Dashboard · Trade · Portfolio · Optimizer
+│       │                             #   OptionPricer · VolSurface · VolForecast
+│       │                             #   Backtester · Predictor · Sentiment · ...
+│       ├── components/ui/            # Card · InfoButton · VolSurface3D · MonteCarloViz
+│       ├── services/                 # apiClient + one service per quant module
+│       ├── utils/                    # glossary · colormap · formatters
+│       ├── hooks/ · store/           # useAuth · usePortfolio · Zustand authStore
+│       └── App.jsx                   # lazy routes + auth guards
 │
-├── 🗃  alembic/                     # SQLAlchemy migrations
-│   ├── env.py
-│   └── versions/
-│       └── 0001_baseline.py        # Phase 2.2 canonical schema (audit 3.2)
-│
-├── 🧪 tests/                       # async-ready pytest fixtures
-└── 🤖 .github/workflows/ci-cd.yml  # cached pip + npm · ruff · pytest · docker build
+├── alembic/ · tests/
+└── .github/workflows/ci-cd.yml
 ```
 
 </details>
 
 ---
 
-## Run, lint, test, deploy
+## Run, lint, test
 
 ```bash
 # ---- One-time setup ----
-make setup                          # install backend + frontend + run migrations
+make setup                            # backend + frontend + migrations
 
 # ---- Daily dev ----
-make docker-up                      # full stack via docker compose
-make frontend-dev                   # frontend only (assumes api running)
-make lint                           # ruff check + format
-make format                         # ruff write
-make test                           # pytest
-make test-cov                       # with coverage report
+make docker-up                        # full stack via docker compose
+make frontend-dev                     # frontend only
+make lint        / make format        # ruff check / write
+make test        / make test-cov      # pytest (+ coverage)
+cd frontend && npx eslint src         # frontend lint
 
 # ---- Database ----
-make db-upgrade                     # alembic upgrade head
-make db-migrate msg='add foo'       # autogenerate a new revision
-make db-current                     # show current head
-
-# ---- Production ----
-make check-deploy                   # validate .env for production
+make db-upgrade                       # alembic upgrade head
+make db-migrate msg='add foo'         # autogenerate revision
 ```
-
----
-
-## Performance budgets
-
-These are the targets the system commits to. They're enforced in CI when applicable, asserted in load tests, and tracked as regression triggers.
-
-| Surface | Target | How it's enforced |
-|---|---|---|
-| REST endpoint (non-aggregating) p95 | < 100 ms | Phase 2.7 pytest perf tests |
-| `/portfolio` aggregating p95 | < 300 ms | Phase 2.4 (after async DB) |
-| WebSocket broadcast p95 (server-side) | < 50 ms | Phase 2.5 + k6 load test |
-| Frontend initial bundle (gzipped) | < 300 KB | Vite build output check |
-| Frontend Lighthouse Performance | > 85 | Phase 3.0 |
-| Per-client idle WS bandwidth | < 10 KB/min | Phase 2.5 acceptance criterion |
-
----
-
-## Documentation map
-
-| Document | Purpose |
-|---|---|
-| [`README.md`](./README.md) | This file. The one-page overview. |
-| [`AUDIT.md`](./AUDIT.md) | What was wrong with the original codebase, with severity. |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | The target system. Every choice has rationale. |
-| [`ROADMAP.md`](./ROADMAP.md) | Phased execution plan. Interview talking points per phase. |
-| `docs/adr/` *(Phase 2.3)* | One ADR per consequential decision. |
-| `docs/WS_PROTOCOL.md` *(Phase 3.2)* | Versioned WebSocket protocol specification. |
 
 ---
 
 ## Frequently asked
 
 <details>
-<summary><b>Why didn't you just rewrite it from scratch?</b></summary>
+<summary><b>Are the quant models "real" or just for show?</b></summary>
 
-Because the folder skeleton was right and the surface area was correct. Rewriting would have meant throwing away three months of correct decisions to fix six weeks of incorrect ones. The audit identified what was salvageable; the roadmap migrated it phase-by-phase, each phase independently mergeable, each commit ending with a runnable system. *See [ROADMAP §15](./ROADMAP.md).*
-
+Real. The Black-Scholes/Greeks math, the GBM Monte Carlo, the Newton-Raphson implied-vol inversion (which round-trips to ~1e-15), the AR(1) factor forecaster, the from-scratch NumPy Random Forest, and the Loughran-McDonald sentiment scorer are all implemented and verified. They run on deterministic synthetic data so the app is self-contained and reproducible; swapping in `yfinance` / a HuggingFace transformer is a single function change.
 </details>
 
 <details>
-<summary><b>Why no Kafka?</b></summary>
+<summary><b>Why hand-build a 3D surface instead of using a chart library?</b></summary>
 
-Because the system is one process. An in-process asyncio event bus solves the actual problem and ships in 200 lines. Kafka solves a problem this codebase doesn't have yet — cross-process or cross-host event distribution. The architecture is designed so that swapping the in-process bus for Redis pub/sub (Phase 4) or Kafka (Phase 5 ceiling) is a one-line change. *See [ADR-0004](./ARCHITECTURE.md).*
-
+Control and performance. A custom `<canvas>` renderer with manual projection, depth sorting, and Lambert shading gives 60 fps with zero heavy 3D dependencies, full control over the colormap, axes, and interaction, and a far smaller bundle than Plotly or three.js for this use case.
 </details>
 
 <details>
-<summary><b>Why no TypeScript?</b></summary>
+<summary><b>Is this connected to a broker?</b></summary>
 
-Deliberate Phase 5 deferral. Migrating React 19 + Vite + Tailwind from JS to TS mid-project is its own can of worms — every component, every hook, every API client gets touched. The right move is to ship Phase 2.6 (Zustand + TanStack Query) and Phase 3.0 (premium UI) in JS first, then do a single clean TS migration in Phase 5 against a stable codebase. *See [ARCHITECTURE §16.4](./ARCHITECTURE.md).*
-
+No. It is a simulator — not regulated, not connected to live order flow, not for real money. The architecture faithfully models the *engineering patterns* you'd find at a trading firm.
 </details>
 
 <details>
-<summary><b>Why FIFO and not weighted-average cost basis?</b></summary>
+<summary><b>Why no Kafka / why FIFO / why no TypeScript yet?</b></summary>
 
-Because in real markets, cost-basis methodology has tax implications and an auditor needs to see lot-level matching. FIFO is the correct choice for any system that might one day need a financial audit. The function is 30 lines, pure, and property-tested. *See [ADR-0002](./ARCHITECTURE.md).*
-
-</details>
-
-<details>
-<summary><b>Is this actually connected to a broker?</b></summary>
-
-No. This is a simulator — not regulated, not connected to live order flow, not designed for real money. The architecture is a faithful model of the *engineering patterns* you'd find at a trading firm. *See [ARCHITECTURE §16.1](./ARCHITECTURE.md).*
-
+Short answers: the system is one process (an in-process event bus is the right tool); FIFO is auditable cost-basis accounting; and a clean TypeScript migration is deferred until the feature surface stabilizes. Long answers with rationale live in [`ARCHITECTURE.md`](./ARCHITECTURE.md) and the ADRs.
 </details>
 
 ---
@@ -434,15 +360,13 @@ No. This is a simulator — not regulated, not connected to live order flow, not
 
 Built by **[@No-Len-77](https://github.com/No-Len-77)**.
 
-This project is part of a deliberate effort to build engineering artifacts that survive senior-engineer code review. If you're hiring for **frontend**, **full-stack**, **fintech**, or **quant systems** roles — I'd love to talk.
+A deliberate effort to build engineering artifacts that survive senior-engineer code review — full-stack rigor *and* quantitative depth. If you're hiring for **full-stack**, **fintech**, or **quant systems** roles, I'd love to talk.
 
 <div align="center">
 <br/>
-<sub>
-Built with rigor. Documented with discipline. Ready to be defended in interviews.
-</sub>
+<sub>Built with rigor. Documented with discipline. Defensible end to end.</sub>
 <br/><br/>
 
-⭐ **If you find the audit-first methodology useful, star the repo — it helps others find it.**
+⭐ **If the audit-first methodology or the Quant Lab is useful to you, a star helps others find it.**
 
 </div>
