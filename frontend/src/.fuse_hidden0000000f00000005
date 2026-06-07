@@ -37,7 +37,6 @@ const PaperAccount    = lazy(() => import("./pages/PaperAccount"));
 const VolSurface      = lazy(() => import("./pages/VolSurface"));
 const VolForecast     = lazy(() => import("./pages/VolForecast"));
 const Backtester      = lazy(() => import("./pages/Backtester"));
-const Predictor       = lazy(() => import("./pages/Predictor"));
 
 // ---- Fallbacks -------------------------------------------------------------
 
@@ -151,7 +150,6 @@ export default function App() {
             <Route path="vol-surface" element={<VolSurface />} />
             <Route path="vol-forecast" element={<VolForecast />} />
             <Route path="backtest" element={<Backtester />} />
-            <Route path="predict" element={<Predictor />} />
             <Route path="paper-account" element={<PaperAccount />} />
             <Route path="account"    element={<Account />} />
           </Route>

@@ -279,6 +279,49 @@ export const GLOSSARY = {
     what: "Share of the backtest period the strategy was actually invested (in the market).",
     interpretation: "Lower exposure with similar returns means capital was at risk less of the time.",
   },
+  predictor: {
+    title: "Stock Return Predictor",
+    subtitle: "Random Forest + Monte Carlo",
+    what:
+      "Engineers features from price/volume history (lagged returns, moving-average ratios, rolling volatility, RSI, momentum, volume z-score) and trains a Random Forest to predict the next day's return. The model is evaluated strictly out-of-sample (time-ordered split, no leakage), then traded long/short and stress-tested with Monte Carlo bootstrap resampling.",
+    points: [
+      "Daily returns are near-random: an R-squared close to 0 and ~52-55% directional accuracy is realistic and honest.",
+      "The edge, if any, shows up in directional accuracy and information coefficient, not raw R-squared.",
+      "Monte Carlo resampling gives a distribution of outcomes instead of one lucky equity curve.",
+    ],
+    interpretation:
+      "A small but consistent directional edge, compounded with risk control, is what real systematic desks harvest.",
+  },
+  directionalAcc: {
+    title: "Directional Accuracy",
+    what: "Share of test days where the model predicted the correct sign (up vs down) of the next return.",
+    interpretation: "50% is a coin flip. Anything consistently above ~52% is a genuine (if small) edge.",
+  },
+  infoCoeff: {
+    title: "Information Coefficient (IC)",
+    what: "Correlation between predicted and realized returns - the core metric quants use to grade a signal.",
+    formula: "corr(prediction, realized return)",
+    interpretation: "0.03-0.06 is a usable signal; 0.1+ is excellent for daily equity returns.",
+  },
+  rSquared: {
+    title: "R-squared",
+    what: "Fraction of return variance the model explains out-of-sample.",
+    interpretation: "Near 0 (even slightly negative) is normal for daily returns - they are mostly noise.",
+  },
+  monteCarloResample: {
+    title: "Monte Carlo Resampling",
+    what: "Bootstraps the strategy's daily returns thousands of times to build a distribution of possible equity paths.",
+    points: [
+      "The shaded band spans the 5th-95th percentile of resampled equity.",
+      "Probability of profit = share of resampled paths ending above the starting capital.",
+    ],
+    interpretation: "Judges a strategy by its distribution of outcomes, not a single backtest that might be luck.",
+  },
+  featureImportance: {
+    title: "Feature Importance",
+    what: "How much each feature reduced prediction error across the forest - which inputs the model leaned on.",
+    interpretation: "Concentration in a few features can signal a real driver; perfectly even importance suggests noise.",
+  },
 };
 
 export default GLOSSARY;

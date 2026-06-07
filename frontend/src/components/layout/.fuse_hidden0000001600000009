@@ -45,7 +45,6 @@ const META = {
   "/vol-surface": ["Neural Volatility Surface", "Implied vol across strikes x expiries"],
   "/vol-forecast": ["Vol Surface Forecaster", "Today vs forecast with confidence band"],
   "/backtest": ["Strategy Backtester", "Rule-based strategy vs buy-and-hold"],
-  "/predict": ["Stock Return Predictor", "Random Forest + Monte Carlo"],
   "/paper-account": ["Paper Account", "Your simulated trading account"],
   "/account": ["Account Settings", "Profile, security & preferences"],
 };

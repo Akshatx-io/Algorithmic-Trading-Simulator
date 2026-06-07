@@ -56,6 +56,7 @@ from app.quant.optimizer import optimize_portfolio
 from app.quant.option_pricer import price_option
 from app.quant.vol_surface import build_vol_surface, build_vol_forecast
 from app.quant.backtester import run_backtest
+from app.quant.return_predictor import predict_returns
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -430,6 +431,24 @@ def backtest(
     costs, returning equity vs buy-and-hold, drawdown, trade signals, and metrics."""
     return run_backtest(symbol, strategy, fast, slow, rsi_period, rsi_buy,
                         rsi_sell, cost_bps, years, initial)
+
+
+# -----------------------------------------------------------------------------
+# Stock Return Predictor (Track C)
+# -----------------------------------------------------------------------------
+@router.get("/predict")
+def predict(
+    symbol: str = Query("AAPL"),
+    years: int = Query(4, ge=2, le=8),
+    n_estimators: int = Query(80, ge=20, le=200),
+    max_depth: int = Query(6, ge=2, le=12),
+    cost_bps: float = Query(2.0, ge=0, le=100),
+    mc_sims: int = Query(400, ge=50, le=1000),
+):
+    """Random-Forest next-day return prediction with out-of-sample metrics, a
+    long/short backtest vs buy-and-hold, feature importances, and Monte Carlo
+    bootstrap resampling of the strategy returns."""
+    return predict_returns(symbol, years, n_estimators, max_depth, cost_bps, mc_sims)
 
 
 # -----------------------------------------------------------------------------
