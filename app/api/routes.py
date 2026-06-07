@@ -25,6 +25,7 @@ from typing import Optional
 
 from fastapi import (
     APIRouter,
+    Body,
     Depends,
     HTTPException,
     Query,
@@ -57,6 +58,7 @@ from app.quant.option_pricer import price_option
 from app.quant.vol_surface import build_vol_surface, build_vol_forecast
 from app.quant.backtester import run_backtest
 from app.quant.return_predictor import predict_returns
+from app.quant.sentiment import analyze_sentiment
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -449,6 +451,16 @@ def predict(
     long/short backtest vs buy-and-hold, feature importances, and Monte Carlo
     bootstrap resampling of the strategy returns."""
     return predict_returns(symbol, years, n_estimators, max_depth, cost_bps, mc_sims)
+
+
+# -----------------------------------------------------------------------------
+# Earnings-Call Sentiment Analyzer (Track C)
+# -----------------------------------------------------------------------------
+@router.post("/sentiment/analyze")
+def sentiment_analyze(payload: dict = Body(default={})):
+    """Score earnings-call sentiment (LM-style financial NLP) and run an
+    event-study backtest of sentiment vs post-earnings drift. Body: {symbol?, text?}."""
+    return analyze_sentiment(payload.get("symbol", "AAPL"), payload.get("text"))
 
 
 # -----------------------------------------------------------------------------

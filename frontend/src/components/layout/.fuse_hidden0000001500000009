@@ -32,7 +32,6 @@ const NAV = [
   { to: "/vol-forecast", label: "Forecaster", icon: CalendarClock },
   { to: "/backtest", label: "Backtester", icon: FlaskConical },
   { to: "/predict", label: "Predictor", icon: BrainCircuit },
-  { to: "/sentiment", label: "Sentiment", icon: MessageSquareText },
   { to: "/account", label: "Settings", icon: Settings },
 ];
 
@@ -48,7 +47,6 @@ const META = {
   "/vol-forecast": ["Vol Surface Forecaster", "Today vs forecast with confidence band"],
   "/backtest": ["Strategy Backtester", "Rule-based strategy vs buy-and-hold"],
   "/predict": ["Stock Return Predictor", "Random Forest + Monte Carlo"],
-  "/sentiment": ["Earnings-Call Sentiment", "Financial NLP + event study"],
   "/paper-account": ["Paper Account", "Your simulated trading account"],
   "/account": ["Account Settings", "Profile, security & preferences"],
 };

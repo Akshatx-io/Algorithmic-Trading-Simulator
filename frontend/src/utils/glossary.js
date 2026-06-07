@@ -322,6 +322,38 @@ export const GLOSSARY = {
     what: "How much each feature reduced prediction error across the forest - which inputs the model leaned on.",
     interpretation: "Concentration in a few features can signal a real driver; perfectly even importance suggests noise.",
   },
+  sentiment: {
+    title: "Earnings-Call Sentiment",
+    subtitle: "Financial NLP + event study",
+    what:
+      "Scores an earnings-call transcript using a Loughran-McDonald-style financial sentiment model (finance-tuned positive/negative lexicons with negation flipping and intensifier weighting), then tests whether the sentiment predicts post-earnings price moves via an event study.",
+    points: [
+      "Each sentence is scored; the document score is squashed to a -1..+1 sentiment.",
+      "Negation (\"not strong\") flips polarity; intensifiers (\"significantly\") add weight.",
+      "A HuggingFace transformer is a drop-in upgrade for the lexicon scorer.",
+    ],
+    interpretation:
+      "The point is turning unstructured text into a quantifiable, tradable signal.",
+  },
+  eventStudy: {
+    title: "Event Study (CAAR)",
+    what: "Cumulative Average Abnormal Return around the earnings announcement, grouped by sentiment. Day 0 is the announcement.",
+    formula: "CAAR(t) = mean over events of cumulative abnormal return up to t",
+    points: [
+      "Positive-sentiment calls should drift up after day 0; negative ones down.",
+      "The gap between the lines is the post-earnings-announcement drift (PEAD).",
+    ],
+    interpretation: "A persistent positive-minus-negative gap is evidence the text carries tradable information.",
+  },
+  tStat: {
+    title: "t-Statistic",
+    what: "Significance of the long-short (positive minus negative) post-earnings return spread.",
+    interpretation: "|t| > 2 means the signal is statistically significant (not luck) at ~95% confidence.",
+  },
+  caarBuckets: {
+    title: "Sentiment Buckets",
+    what: "Events are split into positive, neutral, and negative sentiment groups; the event study averages each group's abnormal-return path.",
+  }
 };
 
 export default GLOSSARY;
