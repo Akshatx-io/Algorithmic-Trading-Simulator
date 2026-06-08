@@ -15,14 +15,15 @@ import os
 import sys
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 
 # Make the app package importable when alembic runs from the repo root.
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.core.config import settings  # noqa: E402
-from app.models import Base  # noqa: E402  pulls in every model module
+from app.core.config import settings
+from app.models import Base
 
 config = context.config
 
@@ -31,7 +32,15 @@ if config.config_file_name is not None:
 
 
 def _sync_url(url: str) -> str:
-    """Alembic runs sync. Coerce async drivers to their sync counterparts."""
+    """Normalize the DB URL for Alembic (which runs synchronously).
+
+    Render emits the legacy ``postgres://`` scheme, but SQLAlchemy 2.0 only
+    recognises ``postgresql://`` -- without this coercion ``engine_from_config``
+    raises ``NoSuchModuleError`` and ``alembic upgrade head`` exits non-zero.
+    Also drop async drivers, since Alembic does not run inside the event loop.
+    """
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
     if "+asyncpg" in url:
         return url.replace("+asyncpg", "")
     if "+aiosqlite" in url:

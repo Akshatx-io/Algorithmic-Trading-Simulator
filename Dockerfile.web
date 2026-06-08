@@ -82,4 +82,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 
 # tini = PID 1 signal forwarding (graceful asyncio shutdown).
 ENTRYPOINT ["tini", "--"]
-CMD ["sh", "scripts/start.sh"]
+# Inlined (not scripts/start.sh) so the start command never depends on a file's
+# line endings — a CRLF-terminated shell script would exit 1 on boot. Runs the
+# migrations, then hands PID to uvicorn on the platform-provided $PORT.
+CMD ["sh", "-c", "alembic upgrade head || python -c 'from app.models import Base; from app.core.database import sync_engine; Base.metadata.create_all(bind=sync_engine)'; exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]

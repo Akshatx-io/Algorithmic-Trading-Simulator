@@ -1,117 +1,84 @@
 """
-Production-grade logging configuration with structured JSON logging and multiple handlers.
-"""
-import sys
-import os
-import json
-from typing import Dict, Any
-from loguru import logger
-from app.core.config import settings
+Logging configuration.
 
+Development: human-readable, colorized console + plain rotating file logs.
+Production:  loguru-native JSON via ``serialize=True`` (one JSON object per
+            line). A custom format-function that returns raw JSON is the wrong
+            approach -- loguru treats the returned string as a *template* and
+            tries to substitute the JSON braces, raising ``KeyError`` on every
+            record. ``serialize=True`` is the correct, robust way to emit
+            structured logs.
+"""
+
+import os
+import sys
+
+from loguru import logger
+
+from app.core.config import settings
 
 # Log directory
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
-
-class JSONFormatter:
-    """Custom JSON formatter for structured logging."""
-
-    def __call__(self, record: Dict[str, Any]) -> str:
-        """Format log record as JSON."""
-        log_entry = {
-            "timestamp": record["time"].isoformat(),
-            "level": record["level"].name,
-            "logger": record["name"],
-            "message": record["message"],
-            "module": record["module"],
-            "function": record["function"],
-            "line": record["line"],
-        }
-
-        # Add extra fields if present
-        if "extra" in record and record["extra"]:
-            log_entry.update(record["extra"])
-
-        # Add exception info if present
-        if record["exception"]:
-            log_entry["exception"] = record["exception"]
-
-        return json.dumps(log_entry, default=str)
+_IS_PROD = settings.environment == "production"
+_CONSOLE_FMT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+    "<level>{level}</level> | "
+    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+    "<level>{message}</level>"
+)
+_FILE_FMT = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
 
 
 def setup_logging():
-    """Configure logging based on environment settings."""
-
-    # Remove default logger
+    """Configure logging sinks based on environment settings."""
     logger.remove()
-
-    # Determine log level
     log_level = settings.log_level.upper()
 
-    # Console handler for development
-    if settings.environment == "development":
-        logger.add(
-            sys.stdout,
-            level=log_level,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-                   "<level>{level}</level> | "
-                   "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-                   "<level>{message}</level>",
-        )
-    else:
-        # JSON logging for production
-        logger.add(
-            sys.stdout,
-            level=log_level,
-            format=JSONFormatter(),
-        )
+    # Console -- JSON in prod (serialize), colorized human-readable in dev.
+    logger.add(
+        sys.stdout,
+        level=log_level,
+        serialize=_IS_PROD,
+        format=_CONSOLE_FMT,
+        colorize=not _IS_PROD,
+    )
 
-    # File handler with rotation
+    # Application log (all levels).
     logger.add(
         os.path.join(LOG_DIR, "app.log"),
-        rotation="10 MB",
-        retention="30 days",
-        level=log_level,
-        format=JSONFormatter() if settings.environment == "production" else
-               "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
-        compression="gz",  # Compress old logs
+        rotation="10 MB", retention="30 days", level=log_level,
+        serialize=_IS_PROD, format=_FILE_FMT, compression="gz",
     )
 
-    # Error log file (separate for easier monitoring)
+    # Error log (separate, for easier monitoring).
     logger.add(
         os.path.join(LOG_DIR, "error.log"),
-        rotation="10 MB",
-        retention="90 days",
-        level="ERROR",
-        format=JSONFormatter() if settings.environment == "production" else
-               "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
-        compression="gz",
+        rotation="10 MB", retention="90 days", level="ERROR",
+        serialize=_IS_PROD, format=_FILE_FMT, compression="gz",
     )
 
-    # Trading activity log (separate for compliance)
+    # Trading activity log (compliance) -- only records tagged with `trading`.
     logger.add(
         os.path.join(LOG_DIR, "trading.log"),
-        rotation="50 MB",
-        retention="1 year",
-        level="INFO",
-        format=JSONFormatter() if settings.environment == "production" else
-               "{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+        rotation="50 MB", retention="1 year", level="INFO",
+        serialize=_IS_PROD,
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
         compression="gz",
-        filter=lambda record: "trading" in record["extra"] if "extra" in record else False,
+        filter=lambda record: "trading" in record["extra"],
     )
 
-    logger.info("Logging system initialized", extra={"environment": settings.environment})
+    logger.info("Logging system initialized (env={})", settings.environment)
 
 
-# Initialize logging
+# Initialize on import.
 setup_logging()
 
 
 def get_logger(name: str):
-    """Get a logger instance with the specified name."""
+    """Return a logger instance bound with the specified name."""
     return logger.bind(name=name)
 
 
-# Export logger instance
-__all__ = ["logger", "get_logger"]
+__all__ = ["get_logger", "logger"]
