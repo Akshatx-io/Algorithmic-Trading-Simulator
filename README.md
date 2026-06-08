@@ -6,7 +6,7 @@
 
 <br/>
 
-[![CI](https://img.shields.io/github/actions/workflow/status/No-Len-77/Algorithmic-Trading-Simulator/ci-cd.yml?branch=main&label=CI&logo=github&style=for-the-badge)](./.github/workflows/ci-cd.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/Akshatx-io/Algorithmic-Trading-Simulator/ci-cd.yml?branch=main&label=CI&logo=github&style=for-the-badge)](./.github/workflows/ci-cd.yml)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white&style=for-the-badge)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white&style=for-the-badge)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black&style=for-the-badge)](https://react.dev/)
@@ -40,7 +40,7 @@ On top of that platform sits a **Quantitative Research Lab**: six self-contained
 ## Try it in 60 seconds
 
 ```bash
-git clone https://github.com/No-Len-77/Algorithmic-Trading-Simulator.git
+git clone https://github.com/Akshatx-io/Algorithmic-Trading-Simulator.git
 cd Algorithmic-Trading-Simulator
 cp .env.example .env
 docker compose up                     # full stack: postgres · redis · api · frontend
@@ -358,7 +358,7 @@ Short answers: the system is one process (an in-process event bus is the right t
 
 ## Author
 
-Built by **[@No-Len-77](https://github.com/No-Len-77)**.
+Built by **[@Akshatx-io](https://github.com/Akshatx-io)**.
 
 A deliberate effort to build engineering artifacts that survive senior-engineer code review — full-stack rigor *and* quantitative depth. If you're hiring for **full-stack**, **fintech**, or **quant systems** roles, I'd love to talk.
 
