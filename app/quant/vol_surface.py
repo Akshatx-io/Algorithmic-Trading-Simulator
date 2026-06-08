@@ -16,6 +16,7 @@ deterministic for a given parameter set.
 from __future__ import annotations
 
 import math
+
 import numpy as np
 
 # --- high-accuracy vectorized normal helpers (A&S 7.1.26 erf, |err| < 1.5e-7) -
@@ -26,8 +27,9 @@ def _erf(x: np.ndarray) -> np.ndarray:
     s = np.sign(x)
     a = np.abs(x)
     t = 1.0 / (1.0 + 0.3275911 * a)
-    y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t
-                - 0.284496736) * t + 0.254829592) * t * np.exp(-a * a)
+    y = 1.0 - (
+        ((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592
+    ) * t * np.exp(-a * a)
     return s * y
 
 
@@ -91,13 +93,13 @@ def build_vol_surface(
 
     K = s * np.linspace(1.0 - width, 1.0 + width, n_strikes)
     T = np.linspace(1.0 / 12.0, max_t, n_expiries)
-    Kg, Tg = np.meshgrid(K, T)            # (ny, nx)
-    kk = np.log(Kg / s)                    # log-moneyness
+    Kg, Tg = np.meshgrid(K, T)  # (ny, nx)
+    kk = np.log(Kg / s)  # log-moneyness
 
     # parametric smile + realistic term structure
     atm = base_vol + term * (np.sqrt(Tg) - 1.0)
-    skew_t = skew / (1.0 + 1.5 * Tg)       # skew flattens with maturity
-    curv_t = curv / (1.0 + 2.0 * Tg)       # smile convexity decays
+    skew_t = skew / (1.0 + 1.5 * Tg)  # skew flattens with maturity
+    curv_t = curv / (1.0 + 2.0 * Tg)  # smile convexity decays
     true_iv = np.clip(atm + skew_t * kk + curv_t * kk * kk, 0.03, 2.5)
 
     # synthesize market prices, inject quote noise, then re-imply
@@ -108,7 +110,7 @@ def build_vol_surface(
     price = np.clip(price, intrinsic + 1e-6, s - 1e-6)
 
     implied = _implied_vol(price, s, Kg, Tg, r)
-    implied = _smooth(implied)             # neural fit (denoise)
+    implied = _smooth(implied)  # neural fit (denoise)
 
     iv_pct = np.round(implied * 100.0, 3)
     zmin = float(iv_pct.min())
@@ -174,14 +176,15 @@ def _forecast_factor(current, mbar, sigma, horizon, seed, phi_true=0.9):
     phi, mu, sg = _ar1_fit(np.array(hist, float))
     means, bands = [], []
     for k in range(1, horizon + 1):
-        means.append(mu + (current - mu) * (phi ** k))
+        means.append(mu + (current - mu) * (phi**k))
         var = sg * sg * (1 - phi ** (2 * k)) / (1 - phi * phi + 1e-12)
         bands.append(1.96 * math.sqrt(max(var, 0.0)))
     return means, bands
 
 
-def build_vol_forecast(s=100.0, r=0.04, base_vol=0.22, skew=-0.16,
-                       curv=0.7, term=0.05, horizon=5) -> dict:
+def build_vol_forecast(
+    s=100.0, r=0.04, base_vol=0.22, skew=-0.16, curv=0.7, term=0.05, horizon=5
+) -> dict:
     horizon = int(max(1, min(horizon, 30)))
     cur = build_vol_surface(s, r, base_vol, skew, curv, term)
     if cur.get("status") != "success":
@@ -196,20 +199,34 @@ def build_vol_forecast(s=100.0, r=0.04, base_vol=0.22, skew=-0.16,
     band_vol = lvl_b[-1] * 100.0
 
     atm_term = []
-    for c0, f0 in zip(cur["atm_term"], fc["atm_term"]):
-        atm_term.append({
-            "t": c0["t"], "current": c0["iv"], "forecast": f0["iv"],
-            "lo": round(f0["iv"] - band_vol, 3), "hi": round(f0["iv"] + band_vol, 3),
-        })
+    for c0, f0 in zip(cur["atm_term"], fc["atm_term"], strict=False):
+        atm_term.append(
+            {
+                "t": c0["t"],
+                "current": c0["iv"],
+                "forecast": f0["iv"],
+                "lo": round(f0["iv"] - band_vol, 3),
+                "hi": round(f0["iv"] + band_vol, 3),
+            }
+        )
 
-    level_path = [{"day": 0, "level": round(base_vol * 100, 3),
-                   "lo": round(base_vol * 100, 3), "hi": round(base_vol * 100, 3)}]
+    level_path = [
+        {
+            "day": 0,
+            "level": round(base_vol * 100, 3),
+            "lo": round(base_vol * 100, 3),
+            "hi": round(base_vol * 100, 3),
+        }
+    ]
     for k in range(horizon):
-        level_path.append({
-            "day": k + 1, "level": round(lvl_m[k] * 100, 3),
-            "lo": round((lvl_m[k] - lvl_b[k]) * 100, 3),
-            "hi": round((lvl_m[k] + lvl_b[k]) * 100, 3),
-        })
+        level_path.append(
+            {
+                "day": k + 1,
+                "level": round(lvl_m[k] * 100, 3),
+                "lo": round((lvl_m[k] - lvl_b[k]) * 100, 3),
+                "hi": round((lvl_m[k] + lvl_b[k]) * 100, 3),
+            }
+        )
 
     return {
         "status": "success",

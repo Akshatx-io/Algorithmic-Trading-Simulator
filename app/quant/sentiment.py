@@ -28,33 +28,164 @@ import numpy as np
 
 # --- Loughran-McDonald-style finance lexicons ------------------------------- #
 _POS = {
-    "growth", "grew", "beat", "beats", "exceeded", "exceed", "strong", "strength",
-    "record", "robust", "momentum", "upgrade", "raised", "raise", "outperform",
-    "accelerate", "accelerating", "expansion", "expanding", "profitability",
-    "profitable", "tailwind", "tailwinds", "improved", "improving", "improvement",
-    "gains", "gain", "surged", "surge", "rose", "increase", "increased", "increasing",
-    "higher", "upside", "confident", "confidence", "optimistic", "favorable",
-    "efficiencies", "efficient", "margin", "margins", "demand", "leadership",
-    "innovative", "innovation", "outstanding", "exceptional", "solid", "resilient",
-    "resilience", "delivered", "delivering", "opportunity", "opportunities",
-    "expanded", "winning", "wins", "success", "successful", "guidance",
+    "growth",
+    "grew",
+    "beat",
+    "beats",
+    "exceeded",
+    "exceed",
+    "strong",
+    "strength",
+    "record",
+    "robust",
+    "momentum",
+    "upgrade",
+    "raised",
+    "raise",
+    "outperform",
+    "accelerate",
+    "accelerating",
+    "expansion",
+    "expanding",
+    "profitability",
+    "profitable",
+    "tailwind",
+    "tailwinds",
+    "improved",
+    "improving",
+    "improvement",
+    "gains",
+    "gain",
+    "surged",
+    "surge",
+    "rose",
+    "increase",
+    "increased",
+    "increasing",
+    "higher",
+    "upside",
+    "confident",
+    "confidence",
+    "optimistic",
+    "favorable",
+    "efficiencies",
+    "efficient",
+    "margin",
+    "margins",
+    "demand",
+    "leadership",
+    "innovative",
+    "innovation",
+    "outstanding",
+    "exceptional",
+    "solid",
+    "resilient",
+    "resilience",
+    "delivered",
+    "delivering",
+    "opportunity",
+    "opportunities",
+    "expanded",
+    "winning",
+    "wins",
+    "success",
+    "successful",
+    "guidance",
 }
 _NEG = {
-    "decline", "declined", "declining", "miss", "missed", "weak", "weakness",
-    "headwind", "headwinds", "litigation", "downgrade", "cut", "cuts", "lowered",
-    "lower", "impairment", "slowdown", "slowing", "uncertainty", "uncertain",
-    "restructuring", "shortfall", "loss", "losses", "fell", "drop", "dropped",
-    "decrease", "decreased", "decreasing", "pressure", "pressured", "challenging",
-    "challenges", "challenge", "disappointing", "disappoint", "concern", "concerns",
-    "concerned", "soft", "softness", "deteriorate", "deteriorating", "volatile",
-    "volatility", "risk", "risks", "warning", "warned", "delay", "delays", "delayed",
-    "writedown", "default", "bankruptcy", "downturn", "recession", "underperform",
-    "negative", "adverse", "contraction", "contracting", "layoffs", "headcount",
+    "decline",
+    "declined",
+    "declining",
+    "miss",
+    "missed",
+    "weak",
+    "weakness",
+    "headwind",
+    "headwinds",
+    "litigation",
+    "downgrade",
+    "cut",
+    "cuts",
+    "lowered",
+    "lower",
+    "impairment",
+    "slowdown",
+    "slowing",
+    "uncertainty",
+    "uncertain",
+    "restructuring",
+    "shortfall",
+    "loss",
+    "losses",
+    "fell",
+    "drop",
+    "dropped",
+    "decrease",
+    "decreased",
+    "decreasing",
+    "pressure",
+    "pressured",
+    "challenging",
+    "challenges",
+    "challenge",
+    "disappointing",
+    "disappoint",
+    "concern",
+    "concerns",
+    "concerned",
+    "soft",
+    "softness",
+    "deteriorate",
+    "deteriorating",
+    "volatile",
+    "volatility",
+    "risk",
+    "risks",
+    "warning",
+    "warned",
+    "delay",
+    "delays",
+    "delayed",
+    "writedown",
+    "default",
+    "bankruptcy",
+    "downturn",
+    "recession",
+    "underperform",
+    "negative",
+    "adverse",
+    "contraction",
+    "contracting",
+    "layoffs",
+    "headcount",
 }
-_INTENSIFIERS = {"significantly", "substantially", "strongly", "materially",
-                 "considerably", "sharply", "dramatically", "meaningfully", "very"}
-_NEGATORS = {"not", "no", "never", "without", "lack", "lacks", "lacking",
-             "fails", "fail", "failed", "cannot", "neither", "nor", "less"}
+_INTENSIFIERS = {
+    "significantly",
+    "substantially",
+    "strongly",
+    "materially",
+    "considerably",
+    "sharply",
+    "dramatically",
+    "meaningfully",
+    "very",
+}
+_NEGATORS = {
+    "not",
+    "no",
+    "never",
+    "without",
+    "lack",
+    "lacks",
+    "lacking",
+    "fails",
+    "fail",
+    "failed",
+    "cannot",
+    "neither",
+    "nor",
+    "less",
+}
 
 POS_THRESH = 0.06
 NEG_THRESH = -0.06
@@ -86,32 +217,38 @@ def _score_sentence(sentence: str):
         if i >= 1 and toks[i - 1] in _INTENSIFIERS:
             weight *= 1.6
         # negation flip within a 3-token window before
-        if any(t in _NEGATORS for t in toks[max(0, i - 3):i]):
+        if any(t in _NEGATORS for t in toks[max(0, i - 3) : i]):
             pol *= -1
         score += pol * weight
         (pos_hits if pol > 0 else neg_hits).append(w)
     n_sent = len(pos_hits) + len(neg_hits)
-    norm = score / n_sent if n_sent else 0.0       # mean polarity in [-1,1]
+    norm = score / n_sent if n_sent else 0.0  # mean polarity in [-1,1]
     return norm, pos_hits, neg_hits, n_sent
 
 
 # --- Sample transcripts (illustrative; user can paste real ones) ------------ #
 _SAMPLES = [
-    ("We delivered another record quarter with revenue up significantly year over year. "
-     "Demand remained strong across all segments and margins expanded meaningfully. "
-     "We raised our full-year guidance on robust momentum and improving profitability. "
-     "Management is confident the favorable trends and operating efficiencies will continue. "
-     "There were some headwinds in supply chain, but overall execution was outstanding."),
-    ("Results this quarter were disappointing as revenue declined and we missed expectations. "
-     "We faced significant headwinds from softening demand and pricing pressure. "
-     "Margins contracted and we lowered our guidance amid growing uncertainty. "
-     "Management announced restructuring and layoffs to address the slowdown. "
-     "While the environment is challenging, we remain focused on long-term opportunities."),
-    ("Performance was mixed this quarter. Revenue grew modestly while margins were roughly flat. "
-     "We saw strength in our core franchise but weakness in newer segments. "
-     "Guidance was maintained as we balance opportunities against macro uncertainty. "
-     "The team delivered solid execution despite some headwinds. "
-     "We remain cautiously optimistic about the path ahead."),
+    (
+        "We delivered another record quarter with revenue up significantly year over year. "
+        "Demand remained strong across all segments and margins expanded meaningfully. "
+        "We raised our full-year guidance on robust momentum and improving profitability. "
+        "Management is confident the favorable trends and operating efficiencies will continue. "
+        "There were some headwinds in supply chain, but overall execution was outstanding."
+    ),
+    (
+        "Results this quarter were disappointing as revenue declined and we missed expectations. "
+        "We faced significant headwinds from softening demand and pricing pressure. "
+        "Margins contracted and we lowered our guidance amid growing uncertainty. "
+        "Management announced restructuring and layoffs to address the slowdown. "
+        "While the environment is challenging, we remain focused on long-term opportunities."
+    ),
+    (
+        "Performance was mixed this quarter. Revenue grew modestly while margins were roughly flat. "
+        "We saw strength in our core franchise but weakness in newer segments. "
+        "Guidance was maintained as we balance opportunities against macro uncertainty. "
+        "The team delivered solid execution despite some headwinds. "
+        "We remain cautiously optimistic about the path ahead."
+    ),
 ]
 
 
@@ -131,11 +268,11 @@ def _event_study(symbol: str, beta: float = 0.035):
     paths = np.zeros((n_events, L))
     for e in range(n_events):
         ar = np.zeros(L)
-        ar[:pre] = rng.normal(0, 0.004, pre)                  # pre-event noise (efficient)
+        ar[:pre] = rng.normal(0, 0.004, pre)  # pre-event noise (efficient)
         jump = 0.45 * car[e]
-        ar[pre] = jump                                        # announcement reaction
+        ar[pre] = jump  # announcement reaction
         drift = (car[e] - jump) / post
-        ar[pre + 1:] = drift + rng.normal(0, 0.004, post)     # gradual drift + noise
+        ar[pre + 1 :] = drift + rng.normal(0, 0.004, post)  # gradual drift + noise
         paths[e] = np.cumsum(ar)
 
     def caar(mask):
@@ -157,7 +294,10 @@ def _event_study(symbol: str, beta: float = 0.035):
 
     si = np.argsort(sentiments)
     samp = si[np.linspace(0, n_events - 1, 120).astype(int)]
-    scatter = [{"sentiment": round(float(sentiments[i]), 3), "fwd_return": round(float(car[i] * 100), 3)} for i in samp]
+    scatter = [
+        {"sentiment": round(float(sentiments[i]), 3), "fwd_return": round(float(car[i] * 100), 3)}
+        for i in samp
+    ]
 
     return {
         "window": window,
@@ -198,7 +338,7 @@ def analyze_sentiment(symbol: str = "AAPL", text: str | None = None) -> dict:
     highlights_pos, highlights_neg = [], []
 
     for i, s in enumerate(sents):
-        norm, ph, nh, n = _score_sentence(s)
+        norm, ph, nh, _n = _score_sentence(s)
         total += norm
         for w in ph:
             pos_words[w] = pos_words.get(w, 0) + 1
@@ -217,7 +357,7 @@ def analyze_sentiment(symbol: str = "AAPL", text: str | None = None) -> dict:
         timeline.append({"i": i + 1, "score": round(norm, 3)})
 
     doc = total / len(sents)
-    score = float(np.tanh(doc * 3.0))               # squash to [-1,1]
+    score = float(np.tanh(doc * 3.0))  # squash to [-1,1]
     label = "Positive" if score > POS_THRESH else ("Negative" if score < NEG_THRESH else "Neutral")
     confidence = round(min(99.0, 40.0 + abs(score) * 60.0), 1)
 

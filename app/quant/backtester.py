@@ -21,8 +21,17 @@ import numpy as np
 
 TRADING_DAYS = 252
 _BASE_PRICES = {
-    "AAPL": 225, "MSFT": 438, "NVDA": 136, "AMZN": 222, "GOOGL": 196,
-    "META": 710, "TSLA": 339, "NFLX": 888, "AMD": 163, "INTC": 23, "UBER": 88,
+    "AAPL": 225,
+    "MSFT": 438,
+    "NVDA": 136,
+    "AMZN": 222,
+    "GOOGL": 196,
+    "META": 710,
+    "TSLA": 339,
+    "NFLX": 888,
+    "AMD": 163,
+    "INTC": 23,
+    "UBER": 88,
 }
 
 
@@ -34,7 +43,7 @@ def _synth_prices(symbol: str, n: int) -> np.ndarray:
     """Deterministic GBM daily close path for a symbol."""
     rng = np.random.default_rng(_seed(symbol))
     base = _BASE_PRICES.get(symbol.upper(), 50 + (_seed(symbol) % 400))
-    mu = rng.uniform(-0.02, 0.12) / TRADING_DAYS            # annual drift -> daily
+    mu = rng.uniform(-0.02, 0.12) / TRADING_DAYS  # annual drift -> daily
     vol = rng.uniform(0.16, 0.40) / np.sqrt(TRADING_DAYS)  # annual vol -> daily
     shocks = rng.normal(mu - 0.5 * vol * vol, vol, n)
     # add a couple of mild regime waves for realism
@@ -48,7 +57,7 @@ def _sma(x, w):
     w = max(1, int(w))
     c = np.cumsum(np.insert(x, 0, 0.0))
     out = np.full_like(x, np.nan, dtype=float)
-    out[w - 1:] = (c[w:] - c[:-w]) / w
+    out[w - 1 :] = (c[w:] - c[:-w]) / w
     return out
 
 
@@ -69,8 +78,8 @@ def _rsi(x, period=14):
     loss = np.where(delta < 0, -delta, 0.0)
     ag = np.zeros_like(x, dtype=float)
     al = np.zeros_like(x, dtype=float)
-    ag[period] = gain[1:period + 1].mean()
-    al[period] = loss[1:period + 1].mean()
+    ag[period] = gain[1 : period + 1].mean()
+    al[period] = loss[1 : period + 1].mean()
     for i in range(period + 1, len(x)):
         ag[i] = (ag[i - 1] * (period - 1) + gain[i]) / period
         al[i] = (al[i - 1] * (period - 1) + loss[i]) / period
@@ -109,7 +118,7 @@ def _signal(strategy, price, p):
         mid = _sma(price, w)
         sd = np.full(n, np.nan)
         for i in range(w - 1, n):
-            sd[i] = price[i - w + 1:i + 1].std()
+            sd[i] = price[i - w + 1 : i + 1].std()
         lower = mid - 2.0 * sd
         pos = 0.0
         for i in range(n):
@@ -148,9 +157,18 @@ def _metrics(daily_ret, equity):
     }, dd
 
 
-def run_backtest(symbol="AAPL", strategy="sma", fast=20, slow=50,
-                 rsi_period=14, rsi_buy=30, rsi_sell=55,
-                 cost_bps=5.0, years=3, initial=100000.0) -> dict:
+def run_backtest(
+    symbol="AAPL",
+    strategy="sma",
+    fast=20,
+    slow=50,
+    rsi_period=14,
+    rsi_buy=30,
+    rsi_sell=55,
+    cost_bps=5.0,
+    years=3,
+    initial=100000.0,
+) -> dict:
     strategy = strategy.lower()
     if strategy not in ("sma", "ema", "rsi", "momentum", "bollinger"):
         return {"status": "invalid_strategy"}
@@ -158,21 +176,27 @@ def run_backtest(symbol="AAPL", strategy="sma", fast=20, slow=50,
     n = int(max(150, min(n, 2520)))
     price = _synth_prices(symbol, n)
 
-    p = {"fast": fast, "slow": slow, "rsi_period": rsi_period,
-         "rsi_buy": rsi_buy, "rsi_sell": rsi_sell}
+    p = {
+        "fast": fast,
+        "slow": slow,
+        "rsi_period": rsi_period,
+        "rsi_buy": rsi_buy,
+        "rsi_sell": rsi_sell,
+    }
     raw_sig = _signal(strategy, price, p)
 
     ret = np.zeros(n)
     ret[1:] = price[1:] / price[:-1] - 1.0
     pos = np.zeros(n)
-    pos[1:] = raw_sig[:-1]                      # trade on next bar (no lookahead)
+    pos[1:] = raw_sig[:-1]  # trade on next bar (no lookahead)
     cost = (cost_bps / 1e4) * np.abs(np.diff(pos, prepend=0.0))
     net = pos * ret - cost
     equity = initial * np.cumprod(1.0 + net)
     bench = initial * (price / price[0])
 
     strat_m, dd = _metrics(net, equity)
-    bench_ret = np.zeros(n); bench_ret[1:] = ret[1:]
+    bench_ret = np.zeros(n)
+    bench_ret[1:] = ret[1:]
     bench_m, _ = _metrics(bench_ret, bench)
 
     # trade extraction (long/flat) for win rate + profit factor
@@ -188,35 +212,45 @@ def run_backtest(symbol="AAPL", strategy="sma", fast=20, slow=50,
             tr = price[i] / price[entry] - 1.0
             trades.append(tr)
             if tr > 0:
-                wins += 1; gross_win += tr
+                wins += 1
+                gross_win += tr
             else:
                 gross_loss += -tr
             signals.append({"date": dates[i], "type": "sell", "price": float(price[i])})
             entry = None
     n_tr = len(trades)
     win_rate = round(100.0 * wins / n_tr, 1) if n_tr else 0.0
-    profit_factor = round(gross_win / gross_loss, 2) if gross_loss > 0 else (round(gross_win, 2) if gross_win else 0.0)
+    profit_factor = (
+        round(gross_win / gross_loss, 2)
+        if gross_loss > 0
+        else (round(gross_win, 2) if gross_win else 0.0)
+    )
 
-    strat_m.update({
-        "win_rate": win_rate,
-        "trades": n_tr,
-        "profit_factor": profit_factor,
-        "exposure": round(float(pos.mean()) * 100, 1),
-        "alpha": round(strat_m["total_return"] - bench_m["total_return"], 2),
-    })
+    strat_m.update(
+        {
+            "win_rate": win_rate,
+            "trades": n_tr,
+            "profit_factor": profit_factor,
+            "exposure": round(float(pos.mean()) * 100, 1),
+            "alpha": round(strat_m["total_return"] - bench_m["total_return"], 2),
+        }
+    )
 
     # downsample series to <= ~520 points for a light payload
     step = max(1, n // 520)
     idx = list(range(0, n, step))
     if idx[-1] != n - 1:
         idx.append(n - 1)
-    series = [{
-        "date": dates[i],
-        "equity": round(float(equity[i]), 2),
-        "benchmark": round(float(bench[i]), 2),
-        "price": round(float(price[i]), 2),
-        "drawdown": round(float(dd[i]) * 100, 2),
-    } for i in idx]
+    series = [
+        {
+            "date": dates[i],
+            "equity": round(float(equity[i]), 2),
+            "benchmark": round(float(bench[i]), 2),
+            "price": round(float(price[i]), 2),
+            "drawdown": round(float(dd[i]) * 100, 2),
+        }
+        for i in idx
+    ]
 
     return {
         "status": "success",
@@ -225,7 +259,7 @@ def run_backtest(symbol="AAPL", strategy="sma", fast=20, slow=50,
         "initial": initial,
         "params": p,
         "series": series,
-        "signals": signals[-40:],          # cap marker count
+        "signals": signals[-40:],  # cap marker count
         "metrics": strat_m,
         "benchmark": bench_m,
     }

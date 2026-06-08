@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import time
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import (
     APIRouter,
@@ -51,14 +50,14 @@ from app.portfolio.equity_engine import get_equity_curve
 from app.portfolio.equity_snapshot_service import record_equity_snapshot
 from app.portfolio.performance_engine import calculate_performance_metrics
 from app.portfolio.pnl_engine import get_total_pnl
-from app.quant.signal_engine import signal_engine
-from app.quant.regime import analyze_regime
+from app.quant.backtester import run_backtest
 from app.quant.optimizer import optimize_portfolio
 from app.quant.option_pricer import price_option
-from app.quant.vol_surface import build_vol_surface, build_vol_forecast
-from app.quant.backtester import run_backtest
+from app.quant.regime import analyze_regime
 from app.quant.return_predictor import predict_returns
 from app.quant.sentiment import analyze_sentiment
+from app.quant.signal_engine import signal_engine
+from app.quant.vol_surface import build_vol_forecast, build_vol_surface
 from app.risk.risk_engine import check_risk_limits
 from app.schemas.trade import ExecuteTradeRequest, TradeResponse
 from app.websocket.manager import manager
@@ -255,7 +254,7 @@ def market_symbol(symbol: str):
     now = time.time()
     state_stale = (ts is None) or ((now - float(ts)) > 5.0)
 
-    provider_price: Optional[float] = None
+    provider_price: float | None = None
     try:
         df = fetch_stock_data(symbol, interval="1m")
         if df is not None and not df.empty and "close" in df.columns:
@@ -475,7 +474,7 @@ def sentiment_analyze(payload: dict = Body(default={})):
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: Optional[str] = Query(default=None),
+    token: str | None = Query(default=None),
 ):
     """JWT-authenticated WebSocket endpoint with basic ping/pong heartbeat."""
 

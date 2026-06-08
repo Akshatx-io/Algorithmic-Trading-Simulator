@@ -8,11 +8,11 @@ computed alongside as an analytical benchmark, so the user can see the MC
 estimate converge to theory (with a 95% confidence interval).
 
 GBM (risk-neutral):
-    S_T = S0 · exp((r − ½σ²)T + σ√T · Z),   Z ~ N(0, 1)
+    S_T = S0 * exp((r - 0.5*sigma^2)*T + sigma*sqrt(T)*Z),   Z ~ N(0, 1)
 
 MC price:
-    call = e^(−rT) · mean(max(S_T − K, 0))
-    put  = e^(−rT) · mean(max(K − S_T, 0))
+    call = e^(-rT) * mean(max(S_T - K, 0))
+    put  = e^(-rT) * mean(max(K - S_T, 0))
 
 Deterministic (seeded) so the same inputs always yield the same result.
 """
@@ -20,7 +20,6 @@ Deterministic (seeded) so the same inputs always yield the same result.
 from __future__ import annotations
 
 import math
-from typing import List
 
 import numpy as np
 
@@ -29,8 +28,8 @@ from app.core.logger import get_logger
 logger = get_logger("option_pricer")
 
 _MAX_PATHS = 100_000
-_MAX_SAMPLE_PATHS = 200    # full price-path lines drawn on the client
-_PATH_STEPS = 80           # time steps per drawn path (smooth curves)
+_MAX_SAMPLE_PATHS = 200  # full price-path lines drawn on the client
+_PATH_STEPS = 80  # time steps per drawn path (smooth curves)
 _HIST_BINS = 40
 
 
@@ -49,7 +48,14 @@ def black_scholes(S: float, K: float, T: float, r: float, sigma: float, kind: st
     kind = kind.lower()
     if T <= 0 or sigma <= 0:
         intrinsic = max(S - K, 0.0) if kind == "call" else max(K - S, 0.0)
-        return {"price": intrinsic, "delta": 0.0, "gamma": 0.0, "vega": 0.0, "theta": 0.0, "rho": 0.0}
+        return {
+            "price": intrinsic,
+            "delta": 0.0,
+            "gamma": 0.0,
+            "vega": 0.0,
+            "theta": 0.0,
+            "rho": 0.0,
+        }
 
     d1 = (math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * math.sqrt(T))
     d2 = d1 - sigma * math.sqrt(T)
@@ -59,12 +65,16 @@ def black_scholes(S: float, K: float, T: float, r: float, sigma: float, kind: st
         price = S * _norm_cdf(d1) - K * disc * _norm_cdf(d2)
         delta = _norm_cdf(d1)
         rho = K * T * disc * _norm_cdf(d2) / 100.0
-        theta = (-(S * _norm_pdf(d1) * sigma) / (2 * math.sqrt(T)) - r * K * disc * _norm_cdf(d2)) / 365.0
+        theta = (
+            -(S * _norm_pdf(d1) * sigma) / (2 * math.sqrt(T)) - r * K * disc * _norm_cdf(d2)
+        ) / 365.0
     else:
         price = K * disc * _norm_cdf(-d2) - S * _norm_cdf(-d1)
         delta = _norm_cdf(d1) - 1.0
         rho = -K * T * disc * _norm_cdf(-d2) / 100.0
-        theta = (-(S * _norm_pdf(d1) * sigma) / (2 * math.sqrt(T)) + r * K * disc * _norm_cdf(-d2)) / 365.0
+        theta = (
+            -(S * _norm_pdf(d1) * sigma) / (2 * math.sqrt(T)) + r * K * disc * _norm_cdf(-d2)
+        ) / 365.0
 
     gamma = _norm_pdf(d1) / (S * sigma * math.sqrt(T))
     vega = S * _norm_pdf(d1) * math.sqrt(T) / 100.0  # per 1% vol move
@@ -81,7 +91,9 @@ def black_scholes(S: float, K: float, T: float, r: float, sigma: float, kind: st
 # ---------------------------------------------------------------------------
 # Monte Carlo simulation
 # ---------------------------------------------------------------------------
-def _sample_paths(S: float, r: float, sigma: float, T: float, n: int, steps: int, rng) -> List[dict]:
+def _sample_paths(
+    S: float, r: float, sigma: float, T: float, n: int, steps: int, rng
+) -> list[dict]:
     """Generate a handful of full GBM price paths for visualization."""
     dt = T / steps
     drift = (r - 0.5 * sigma * sigma) * dt
@@ -149,8 +161,13 @@ def price_option(
     return {
         "status": "success",
         "inputs": {
-            "S": S, "K": K, "T": T, "r": r, "sigma": sigma,
-            "kind": kind, "n_paths": n,
+            "S": S,
+            "K": K,
+            "T": T,
+            "r": r,
+            "sigma": sigma,
+            "kind": kind,
+            "n_paths": n,
         },
         "mc": {
             "price": round(mc_price, 4),

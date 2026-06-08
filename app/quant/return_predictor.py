@@ -18,15 +18,37 @@ deterministic, and fast.
 from __future__ import annotations
 
 import hashlib
+
 import numpy as np
 
 TRADING_DAYS = 252
 _BASE = {
-    "AAPL": 225, "MSFT": 438, "NVDA": 136, "AMZN": 222, "GOOGL": 196,
-    "META": 710, "TSLA": 339, "NFLX": 888, "AMD": 163, "INTC": 23, "UBER": 88,
+    "AAPL": 225,
+    "MSFT": 438,
+    "NVDA": 136,
+    "AMZN": 222,
+    "GOOGL": 196,
+    "META": 710,
+    "TSLA": 339,
+    "NFLX": 888,
+    "AMD": 163,
+    "INTC": 23,
+    "UBER": 88,
 }
-_FEATURES = ["ret_1", "ret_2", "ret_3", "ret_5", "ma5", "ma10", "ma20",
-             "roc10", "vol10", "vol20", "rsi14", "volz10"]
+_FEATURES = [
+    "ret_1",
+    "ret_2",
+    "ret_3",
+    "ret_5",
+    "ma5",
+    "ma10",
+    "ma20",
+    "roc10",
+    "vol10",
+    "vol20",
+    "rsi14",
+    "volz10",
+]
 
 
 def _seed(symbol: str) -> int:
@@ -50,7 +72,7 @@ def _synth(symbol: str, n: int):
 def _sma(x, w):
     c = np.cumsum(np.insert(x, 0, 0.0))
     out = np.full_like(x, np.nan, dtype=float)
-    out[w - 1:] = (c[w:] - c[:-w]) / w
+    out[w - 1 :] = (c[w:] - c[:-w]) / w
     return out
 
 
@@ -58,29 +80,35 @@ def _rsi(x, period=14):
     delta = np.diff(x, prepend=x[0])
     gain = np.where(delta > 0, delta, 0.0)
     loss = np.where(delta < 0, -delta, 0.0)
-    ag = np.zeros_like(x); al = np.zeros_like(x)
-    ag[period] = gain[1:period + 1].mean(); al[period] = loss[1:period + 1].mean()
+    ag = np.zeros_like(x)
+    al = np.zeros_like(x)
+    ag[period] = gain[1 : period + 1].mean()
+    al[period] = loss[1 : period + 1].mean()
     for i in range(period + 1, len(x)):
         ag[i] = (ag[i - 1] * (period - 1) + gain[i]) / period
         al[i] = (al[i - 1] * (period - 1) + loss[i]) / period
     rs = ag / np.where(al == 0, 1e-9, al)
-    out = 100 - 100 / (1 + rs); out[:period] = 50.0
+    out = 100 - 100 / (1 + rs)
+    out[:period] = 50.0
     return out
 
 
 def _rolling_std(x, w):
     out = np.full_like(x, np.nan, dtype=float)
     for i in range(w, len(x)):
-        out[i] = x[i - w + 1:i + 1].std()
+        out[i] = x[i - w + 1 : i + 1].std()
     return out
 
 
 def _build_features(close, vols):
     n = len(close)
-    ret = np.zeros(n); ret[1:] = close[1:] / close[:-1] - 1.0
+    ret = np.zeros(n)
+    ret[1:] = close[1:] / close[:-1] - 1.0
     f = {
-        "ret_1": np.roll(ret, 1), "ret_2": np.roll(ret, 2),
-        "ret_3": np.roll(ret, 3), "ret_5": np.roll(ret, 5),
+        "ret_1": np.roll(ret, 1),
+        "ret_2": np.roll(ret, 2),
+        "ret_3": np.roll(ret, 3),
+        "ret_5": np.roll(ret, 5),
         "ma5": close / _sma(close, 5) - 1.0,
         "ma10": close / _sma(close, 10) - 1.0,
         "ma20": close / _sma(close, 20) - 1.0,
@@ -104,12 +132,16 @@ def _best_split(X, y, idx, feats, min_leaf):
     for f in feats:
         xv = X[idx, f]
         order = np.argsort(xv, kind="mergesort")
-        xs = xv[order]; ys = yv[order]
+        xs = xv[order]
+        ys = yv[order]
         n = len(ys)
-        csum = np.cumsum(ys); csum2 = np.cumsum(ys * ys)
+        csum = np.cumsum(ys)
+        csum2 = np.cumsum(ys * ys)
         tot, tot2 = csum[-1], csum2[-1]
-        ln = np.arange(1, n); rn = n - ln
-        ls = csum[:-1]; rs = tot - ls
+        ln = np.arange(1, n)
+        rn = n - ln
+        ls = csum[:-1]
+        rs = tot - ls
         sse_l = csum2[:-1] - ls * ls / ln
         sse_r = (tot2 - csum2[:-1]) - rs * rs / rn
         sse = sse_l + sse_r
@@ -137,7 +169,8 @@ def _fit_tree(X, y, idx, depth, rng, imp, max_depth, min_split, min_leaf, mf):
     if len(li) < min_leaf or len(ri) < min_leaf:
         return {"v": float(yv.mean())}
     return {
-        "f": bf, "t": bt,
+        "f": bf,
+        "t": bt,
         "L": _fit_tree(X, y, li, depth + 1, rng, imp, max_depth, min_split, min_leaf, mf),
         "R": _fit_tree(X, y, ri, depth + 1, rng, imp, max_depth, min_split, min_leaf, mf),
     }
@@ -151,9 +184,13 @@ def _pred_tree(node, row):
 
 class RandomForest:
     def __init__(self, n_estimators=80, max_depth=6, min_split=10, min_leaf=5, seed=42):
-        self.n = n_estimators; self.md = max_depth
-        self.ms = min_split; self.ml = min_leaf; self.seed = seed
-        self.trees = []; self.importances = None
+        self.n = n_estimators
+        self.md = max_depth
+        self.ms = min_split
+        self.ml = min_leaf
+        self.seed = seed
+        self.trees = []
+        self.importances = None
 
     def fit(self, X, y):
         rng = np.random.default_rng(self.seed)
@@ -191,11 +228,12 @@ def _max_dd(equity):
     return float((equity / peak - 1.0).min())
 
 
-def predict_returns(symbol="AAPL", years=4, n_estimators=80, max_depth=6,
-                    cost_bps=2.0, mc_sims=400) -> dict:
+def predict_returns(
+    symbol="AAPL", years=4, n_estimators=80, max_depth=6, cost_bps=2.0, mc_sims=400
+) -> dict:
     n = int(max(2, min(years, 8)) * TRADING_DAYS)
     close, vols = _synth(symbol, n)
-    X, y, ret, valid = _build_features(close, vols)
+    X, y, _ret, valid = _build_features(close, vols)
     Xv, yv = X[valid], y[valid]
     vidx = np.where(valid)[0]
 
@@ -215,7 +253,8 @@ def predict_returns(symbol="AAPL", years=4, n_estimators=80, max_depth=6,
     dir_acc = float(np.mean(np.sign(pred) == np.sign(yte)) * 100.0)
     ic = float(np.corrcoef(pred, yte)[0, 1]) if np.std(pred) > 0 else 0.0
 
-    pos = np.sign(pred); pos[pos == 0] = 1.0
+    pos = np.sign(pred)
+    pos[pos == 0] = 1.0
     cost = (cost_bps / 1e4) * np.abs(np.diff(pos, prepend=pos[0]))
     strat_r = pos * yte - cost
     eq = np.cumprod(1.0 + strat_r)
@@ -250,21 +289,42 @@ def predict_returns(symbol="AAPL", years=4, n_estimators=80, max_depth=6,
     di = list(range(0, L, step))
     if di[-1] != L - 1:
         di.append(L - 1)
-    equity_series = [{"i": int(k), "strategy": round(float(eq[k]), 4), "benchmark": round(float(bench[k]), 4)} for k in di]
-    mc_bands = [{"i": int(k), "p5": round(float(p5[k]), 4), "p50": round(float(p50[k]), 4), "p95": round(float(p95[k]), 4)} for k in di]
+    equity_series = [
+        {"i": int(k), "strategy": round(float(eq[k]), 4), "benchmark": round(float(bench[k]), 4)}
+        for k in di
+    ]
+    mc_bands = [
+        {
+            "i": int(k),
+            "p5": round(float(p5[k]), 4),
+            "p50": round(float(p50[k]), 4),
+            "p95": round(float(p95[k]), 4),
+        }
+        for k in di
+    ]
     fan = [[round(float(paths[s, k]), 4) for k in di] for s in range(min(40, sims))]
 
     ssz = min(len(pred), 160)
     sidx = np.linspace(0, len(pred) - 1, ssz).astype(int)
-    scatter = [{"actual": round(float(yte[i] * 100), 3), "pred": round(float(pred[i] * 100), 3)} for i in sidx]
+    scatter = [
+        {"actual": round(float(yte[i] * 100), 3), "pred": round(float(pred[i] * 100), 3)}
+        for i in sidx
+    ]
 
     tr = (terminal - 1.0) * 100.0
     counts, edges = np.histogram(tr, bins=28)
-    hist = [{"ret": round(float((edges[i] + edges[i + 1]) / 2), 2), "count": int(counts[i])} for i in range(len(counts))]
+    hist = [
+        {"ret": round(float((edges[i] + edges[i + 1]) / 2), 2), "count": int(counts[i])}
+        for i in range(len(counts))
+    ]
 
     importances = sorted(
-        [{"feature": _FEATURES[i], "importance": round(float(rf.importances[i] * 100), 2)} for i in range(len(_FEATURES))],
-        key=lambda d: d["importance"], reverse=True,
+        [
+            {"feature": _FEATURES[i], "importance": round(float(rf.importances[i] * 100), 2)}
+            for i in range(len(_FEATURES))
+        ],
+        key=lambda d: d["importance"],
+        reverse=True,
     )
 
     last_row = X[vidx[-1]]
@@ -280,9 +340,13 @@ def predict_returns(symbol="AAPL", years=4, n_estimators=80, max_depth=6,
         "symbol": symbol.upper(),
         "model": f"RandomForest({n_estimators} trees, depth {max_depth})",
         "metrics": {
-            "r2": round(r2, 4), "rmse": round(rmse * 100, 3), "mae": round(mae * 100, 3),
-            "directional_acc": round(dir_acc, 1), "ic": round(ic, 3),
-            "n_train": int(split), "n_test": int(len(Xte)),
+            "r2": round(r2, 4),
+            "rmse": round(rmse * 100, 3),
+            "mae": round(mae * 100, 3),
+            "directional_acc": round(dir_acc, 1),
+            "ic": round(ic, 3),
+            "n_train": int(split),
+            "n_test": len(Xte),
         },
         "strategy": strat_metrics,
         "benchmark": bench_metrics,
@@ -291,11 +355,13 @@ def predict_returns(symbol="AAPL", years=4, n_estimators=80, max_depth=6,
         "equity": equity_series,
         "mc_bands": mc_bands,
         "mc_fan": fan,
-        "mc": {"prob_profit": prob_profit,
-               "median_return": round(float((np.median(terminal) - 1) * 100), 2),
-               "p5_return": round(float((np.percentile(terminal, 5) - 1) * 100), 2),
-               "p95_return": round(float((np.percentile(terminal, 95) - 1) * 100), 2),
-               "sims": sims},
+        "mc": {
+            "prob_profit": prob_profit,
+            "median_return": round(float((np.median(terminal) - 1) * 100), 2),
+            "p5_return": round(float((np.percentile(terminal, 5) - 1) * 100), 2),
+            "p95_return": round(float((np.percentile(terminal, 95) - 1) * 100), 2),
+            "sims": sims,
+        },
         "terminal_hist": hist,
         "scatter": scatter,
     }
