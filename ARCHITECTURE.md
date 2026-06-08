@@ -6,6 +6,8 @@
 >
 > **Companion documents:** [AUDIT.md](./AUDIT.md) — the current-state forensic analysis. [ROADMAP.md](./ROADMAP.md) — the phased implementation plan (Step 3 deliverable). [docs/adr/](./docs/adr/) — Architecture Decision Records as we make consequential choices.
 
+> **Status update — Quant Lab shipped.** Beyond the core platform, a **Quantitative Research Lab** is now live (`app/quant/*` + `frontend/src/pages/*`): a Monte-Carlo option pricer (GBM + Black-Scholes + Greeks), a 3D implied-volatility surface (SVI parametrization + Newton-Raphson IV inversion) with an AR(1)/Ornstein-Uhlenbeck forecaster, a lookahead-safe strategy backtester, a from-scratch NumPy Random-Forest return predictor with Monte-Carlo resampling, and a Loughran-McDonald earnings-call sentiment analyzer with an event-study backtest. Engines are dependency-light, deterministic, and exposed under `/api/v1` (`options`, `vol`, `backtest`, `predict`, `sentiment`), surfaced through the in-app **Quant Lab** workspace.
+
 ---
 
 ## Table of Contents

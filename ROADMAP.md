@@ -8,6 +8,8 @@
 >
 > **Reading guide:** Each phase has a fixed shape — *Objective, Why this phase exists, Dependencies, Tasks, Deliverables, Acceptance Criteria, Interview Talking Points, Duration*. The "Interview Talking Points" section is the most important — those are the answers you will rehearse for behavioral-technical interviews after each phase ships.
 
+> **Status update — quant phase shipped (and over-delivered).** The Phase-4 "Quant differentiation" goal (originally *pick 2-3 of regime / optimizer / VaR / ML / backtest*) is **complete**: eight quant surfaces are live — Market-Regime detection, Monte-Carlo Portfolio Optimizer, Monte-Carlo Option Pricer, Neural Volatility Surface, Vol-Surface Forecaster, Strategy Backtester, Stock-Return Predictor (NumPy Random Forest + Monte-Carlo resampling), and an Earnings-Call Sentiment Analyzer (financial NLP + event study). Each ships a numerically-honest engine, a typed REST endpoint, and a bespoke interactive visualization, unified under the in-app **Quant Lab**. See the README "Quantitative Research Lab" section.
+
 ---
 
 ## Table of Contents
