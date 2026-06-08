@@ -25,13 +25,19 @@ from __future__ import annotations
 import asyncio
 import inspect
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Awaitable, Callable, List
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+# Built frontend (Vite output). Present in the production image; absent in dev
+# (where the Vite server serves the SPA). Drives same-origin SPA hosting below.
+_FRONTEND_DIST = Path(__file__).resolve().parent / "frontend" / "dist"
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -260,6 +266,9 @@ app.include_router(api_router,    prefix="/api/v1")
 @app.get("/")
 @limiter.limit("60/minute")
 async def root(request: Request):
+    # In production the built SPA is served from the same origin as the API.
+    if _FRONTEND_DIST.is_dir():
+        return FileResponse(_FRONTEND_DIST / "index.html")
     return {
         "name":    settings.app_name,
         "version": settings.app_version,
@@ -279,6 +288,29 @@ async def health(request: Request):
         "environment": settings.environment,
         "version":     settings.app_version,
     }
+
+
+# -----------------------------------------------------------------------------
+# Single-page app (production)
+#
+# Serve the built Vite frontend from the same origin as the API so the auth
+# refresh cookie, the WebSocket and CORS all work without cross-origin setup.
+# Only active when the build output exists (the production image). In local dev
+# the Vite server owns the SPA and this block is skipped.
+#
+# Registered LAST so /api/*, /health, /docs and /openapi.json always win; the
+# catch-all only handles client-side routes (e.g. deep links to /quant).
+# -----------------------------------------------------------------------------
+if _FRONTEND_DIST.is_dir():
+    app.mount("/assets", StaticFiles(directory=_FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        candidate = (_FRONTEND_DIST / full_path).resolve()
+        root_dir = _FRONTEND_DIST.resolve()
+        if candidate.is_file() and (candidate == root_dir or root_dir in candidate.parents):
+            return FileResponse(candidate)
+        return FileResponse(_FRONTEND_DIST / "index.html")
 
 
 # -----------------------------------------------------------------------------

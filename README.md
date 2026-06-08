@@ -21,6 +21,10 @@
 
 <br/>
 
+[![Deploy to Render](https://img.shields.io/badge/Deploy%20to-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/deploy?repo=https://github.com/Akshatx-io/Algorithmic-Trading-Simulator) · **[Deployment Guide](./DEPLOY.md)**
+
+<br/>
+
 </div>
 
 ---
@@ -64,6 +68,8 @@ Then visit:
 | **Health probe** | <http://localhost:8000/health> | JSON status + DB connectivity |
 
 Register → log in → place a trade → watch the portfolio update live over WebSocket → open the Quant Lab.
+
+**Deploy your own** in one click: the repo ships a [`render.yaml`](./render.yaml) blueprint that provisions the same-origin web service + managed Postgres + Redis. Full steps in **[DEPLOY.md](./DEPLOY.md)**.
 
 ---
 

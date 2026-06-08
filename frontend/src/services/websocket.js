@@ -27,9 +27,14 @@ class WebSocketEngine {
     this.isConnected = false;
     this.isConnecting = false;
 
+    // Same-origin by default: derive ws/wss + host from the page URL so the
+    // app works in production (served by FastAPI) and in dev (Vite proxy)
+    // without any build-time env. Override with VITE_WS_URL if needed.
     this.baseURL =
       import.meta.env.VITE_WS_URL ||
-      "ws://localhost:8000/api/v1/ws";
+      (typeof window !== "undefined"
+        ? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/api/v1/ws`
+        : "ws://localhost:8000/api/v1/ws");
   }
 
   // Reads from the Zustand store. Phase 2.5 swaps this for a short-lived

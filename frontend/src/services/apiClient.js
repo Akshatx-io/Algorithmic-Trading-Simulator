@@ -20,8 +20,10 @@ import axios from "axios";
 
 import { useAuthStore } from "../store/authStore";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+// Same-origin by default ("/api/v1"): in production the SPA is served by the
+// API, and in dev Vite proxies /api -> the backend (see vite.config.js). This
+// keeps the httpOnly refresh cookie same-origin. Override with VITE_API_URL.
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

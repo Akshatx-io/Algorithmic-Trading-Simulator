@@ -227,6 +227,17 @@ class Settings(BaseSettings):
             raise ValueError(f"log_level must be one of {allowed}")
         return v_upper
 
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, v: str) -> str:
+        # Managed providers (Render, Heroku, …) often hand out the legacy
+        # `postgres://` scheme, which SQLAlchemy 2.0 no longer recognizes.
+        # Coerce it to the canonical `postgresql://` so both the sync engine
+        # and `database_url_async` work without manual edits.
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
+
     # NOTE (audit 5.11): the original config had a `validate_model` field
     # validator that raised if `model_path` didn't exist on disk. That made
     # the whole app fail to import without an .h5 file, even when

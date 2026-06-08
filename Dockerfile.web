@@ -1,0 +1,85 @@
+# syntax=docker/dockerfile:1.7
+# =============================================================================
+# Production image — single same-origin service.
+#
+# Builds the Vite SPA, installs the Python runtime deps, and serves the SPA +
+# REST API + WebSocket from one FastAPI/uvicorn process. Same origin means the
+# httpOnly refresh cookie, the WebSocket, and CORS all work with zero
+# cross-origin configuration.
+#
+# Used by render.yaml (dockerfilePath: ./Dockerfile.web). For the dev compose
+# stack keep using the multi-stage ./Dockerfile.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Stage 1 — frontend build (Vite -> static assets)
+# -----------------------------------------------------------------------------
+FROM node:20-slim AS frontend
+WORKDIR /fe
+# Copy manifests first for layer caching; lockfile is optional (ci || install).
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci || npm install
+COPY frontend/ ./
+RUN npm run build            # output -> /fe/dist
+
+
+# -----------------------------------------------------------------------------
+# Stage 2 — python dependency builder (isolated virtualenv)
+# -----------------------------------------------------------------------------
+FROM python:3.12-slim AS pydeps
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+WORKDIR /build
+# Source needed to build the project wheel + resolve runtime deps.
+COPY pyproject.toml README.md alembic.ini ./
+COPY app ./app
+COPY alembic ./alembic
+COPY main.py ./
+RUN pip install --upgrade pip wheel setuptools \
+    && pip install .
+
+
+# -----------------------------------------------------------------------------
+# Stage 3 — runtime
+# -----------------------------------------------------------------------------
+FROM python:3.12-slim AS runtime
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    ENVIRONMENT=production
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq5 curl tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user (defense in depth)
+RUN groupadd --system --gid 1001 hft \
+    && useradd  --system --uid 1001 --gid hft --create-home --shell /sbin/nologin hft
+
+WORKDIR /app
+
+# Python venv from the builder, then the application source.
+COPY --from=pydeps /opt/venv /opt/venv
+COPY --chown=hft:hft . /app
+# Overlay the built SPA so main.py serves it (frontend/dist is gitignored, so
+# it never comes from the build context — only from the frontend stage).
+COPY --from=frontend --chown=hft:hft /fe/dist /app/frontend/dist
+
+RUN mkdir -p /app/logs && chown -R hft:hft /app
+
+USER hft
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD curl -fsS "http://localhost:${PORT:-8000}/health" || exit 1
+
+# tini = PID 1 signal forwarding (graceful asyncio shutdown).
+ENTRYPOINT ["tini", "--"]
+CMD ["sh", "scripts/start.sh"]
