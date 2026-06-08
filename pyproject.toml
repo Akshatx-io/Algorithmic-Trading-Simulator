@@ -163,9 +163,7 @@ exclude = ["alembic/versions/", "frontend/"]
 module = "yfinance.*"
 ignore_missing_imports = true
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
+["tests"]
 addopts = "-ra -q --strict-markers --tb=short"
 markers = [
     "unit: pure unit tests, no I/O",

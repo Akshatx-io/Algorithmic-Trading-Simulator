@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import pytest
 
 from app.quant.backtester import run_backtest
 from app.quant.option_pricer import price_option
@@ -23,6 +24,8 @@ from app.quant.vol_surface import (
     build_vol_forecast,
     build_vol_surface,
 )
+
+pytestmark = pytest.mark.unit
 
 
 # --------------------------------------------------------------------------- #
