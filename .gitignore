@@ -185,4 +185,4 @@ secrets/
 *.bak
 *.backup
 # transient build-verification output (sandbox)
-frontend/dist_verify/
+frontend/dist_*/

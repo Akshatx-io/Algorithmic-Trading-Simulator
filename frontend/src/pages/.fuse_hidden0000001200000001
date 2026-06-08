@@ -1,0 +1,193 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Atom, Sigma, Box, CalendarClock, FlaskConical, BrainCircuit,
+  MessageSquareText, Radar, Sparkles, ArrowRight,
+} from "lucide-react";
+
+import Card from "../components/ui/Card";
+import { priceOption } from "../services/optionService";
+import { getVolSurface, getVolForecast } from "../services/volService";
+import { getBacktest } from "../services/backtestService";
+import { getPrediction } from "../services/predictService";
+import { analyzeSentiment } from "../services/sentimentService";
+
+const MODULES = [
+  {
+    key: "options", to: "/options", icon: Sigma, accent: "#34d399",
+    title: "Monte Carlo Option Pricer",
+    desc: "Animated GBM simulation with Black-Scholes benchmark and full Greeks.",
+    math: "GBM · Black-Scholes · Greeks",
+    stat: {
+      label: "MC call price",
+      fetch: () => priceOption({ s: 100, k: 100, t: 1, r: 0.05, sigma: 0.2, kind: "call", n: 20000 }),
+      pick: (d) => `$${Number(d.mc.price).toFixed(2)}`,
+    },
+  },
+  {
+    key: "vol", to: "/vol-surface", icon: Box, accent: "#60a5fa",
+    title: "Neural Volatility Surface",
+    desc: "Interactive 3D implied-vol surface across strikes × expiries, plus a heatmap.",
+    math: "SVI · Newton-Raphson IV",
+    stat: {
+      label: "ATM vol",
+      fetch: () => getVolSurface({ s: 100, r: 0.04, base_vol: 0.22, skew: -0.16, curv: 0.7, term: 0.05 }),
+      pick: (d) => `${Number(d.atm_vol).toFixed(1)}%`,
+    },
+  },
+  {
+    key: "forecast", to: "/vol-forecast", icon: CalendarClock, accent: "#22d3ee",
+    title: "Vol Surface Forecaster",
+    desc: "Forecasts how the surface evolves with a 95% confidence band.",
+    math: "AR(1) / Ornstein-Uhlenbeck",
+    stat: {
+      label: "5-day ATM forecast",
+      fetch: () => getVolForecast({ s: 100, r: 0.04, base_vol: 0.22, skew: -0.16, curv: 0.7, term: 0.05, horizon: 5 }),
+      pick: (d) => `${Number(d.forecast_atm).toFixed(1)}%`,
+    },
+  },
+  {
+    key: "backtest", to: "/backtest", icon: FlaskConical, accent: "#a78bfa",
+    title: "Strategy Backtester",
+    desc: "Rule-based strategies vs buy-and-hold, lookahead-safe, with full metrics.",
+    math: "Sharpe · Sortino · Calmar",
+    stat: {
+      label: "AAPL EMA Sharpe",
+      fetch: () => getBacktest({ symbol: "AAPL", strategy: "ema", fast: 20, slow: 50, cost_bps: 5, years: 3 }),
+      pick: (d) => `${Number(d.metrics.sharpe).toFixed(2)}`,
+    },
+  },
+  {
+    key: "predict", to: "/predict", icon: BrainCircuit, accent: "#f472b6",
+    title: "Stock Return Predictor",
+    desc: "Random Forest next-day forecast, stress-tested with Monte Carlo resampling.",
+    math: "Random Forest · Monte Carlo",
+    stat: {
+      label: "AAPL directional acc",
+      fetch: () => getPrediction({ symbol: "AAPL", years: 4, n_estimators: 50, max_depth: 6, mc_sims: 150 }),
+      pick: (d) => `${Number(d.metrics.directional_acc).toFixed(1)}%`,
+    },
+  },
+  {
+    key: "sentiment", to: "/sentiment", icon: MessageSquareText, accent: "#fbbf24",
+    title: "Earnings-Call Sentiment",
+    desc: "Financial NLP turns transcripts into a tradable signal via an event study.",
+    math: "LM lexicon · event study",
+    stat: {
+      label: "Signal t-stat",
+      fetch: () => analyzeSentiment({ symbol: "AAPL" }),
+      pick: (d) => `${Number(d.event_study.signal.t_stat).toFixed(2)}`,
+    },
+  },
+];
+
+const FOUNDATIONS = [
+  { to: "/regime", icon: Radar, title: "Market Regime", desc: "KMeans bull / bear / sideways detection" },
+  { to: "/optimizer", icon: Sparkles, title: "Portfolio Optimizer", desc: "Monte-Carlo efficient frontier" },
+];
+
+function Stat({ state }) {
+  if (state === undefined) return <div className="h-7 w-24 animate-pulse rounded bg-ink-700/70" />;
+  return <p className="tnum text-2xl font-bold text-white">{state.value}</p>;
+}
+
+export default function QuantLab() {
+  const [stats, setStats] = useState({});
+
+  useEffect(() => {
+    let mounted = true;
+    MODULES.forEach((m) => {
+      m.stat.fetch()
+        .then((d) => mounted && setStats((s) => ({ ...s, [m.key]: { value: m.stat.pick(d), label: m.stat.label } })))
+        .catch(() => mounted && setStats((s) => ({ ...s, [m.key]: { value: "—", label: m.stat.label } })));
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  return (
+    <div className="space-y-8">
+      {/* Hero */}
+      <Card className="card-pad overflow-hidden">
+        <div className="relative" style={{ background: "linear-gradient(120deg, rgba(52,211,153,0.10), rgba(56,189,248,0.06))" }}>
+          <div className="flex flex-col gap-4 p-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-gradient shadow-glow">
+                <Atom size={24} className="text-white" />
+              </span>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Quantitative Research Lab</h2>
+                <p className="mt-1 max-w-2xl text-sm text-gray-400">
+                  Six self-contained quant modules — each a numerically-honest engine, a typed API, and a
+                  bespoke interactive visualization. From-scratch math, zero black boxes.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {[["6", "modules"], ["100%", "from-scratch"], ["60fps", "visuals"]].map(([v, l]) => (
+                <div key={l} className="rounded-xl border border-line/70 bg-ink-900/60 px-3 py-2 text-center">
+                  <p className="tnum text-lg font-bold text-brand-300">{v}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-gray-500">{l}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Module grid */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {MODULES.map((m) => {
+          const Icon = m.icon;
+          return (
+            <Link
+              key={m.key}
+              to={m.to}
+              className="card card-pad group flex flex-col gap-4 transition duration-200 hover:-translate-y-1 hover:shadow-glow"
+              style={{ borderColor: undefined }}
+            >
+              <div className="flex items-start justify-between">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: `${m.accent}1a`, color: m.accent }}>
+                  <Icon size={22} />
+                </span>
+                <ArrowRight size={18} className="text-gray-600 transition group-hover:translate-x-0.5 group-hover:text-white" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white">{m.title}</h3>
+                <p className="mt-1 text-sm text-gray-400">{m.desc}</p>
+              </div>
+              <div className="mt-auto flex items-end justify-between border-t border-line/60 pt-3">
+                <div>
+                  <Stat state={stats[m.key]} />
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wide text-gray-500">{m.stat.label}</p>
+                </div>
+                <span className="rounded-md bg-ink-900/70 px-2 py-1 text-[10px] font-medium text-gray-400 ring-1 ring-line/60">{m.math}</span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Foundations */}
+      <div>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Platform foundations</p>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {FOUNDATIONS.map((f) => {
+            const Icon = f.icon;
+            return (
+              <Link key={f.to} to={f.to} className="card group flex items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-glow">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-300">
+                  <Icon size={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-semibold text-white">{f.title}</h4>
+                  <p className="truncate text-xs text-gray-400">{f.desc}</p>
+                </div>
+                <ArrowRight size={16} className="text-gray-600 transition group-hover:translate-x-0.5 group-hover:text-white" />
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

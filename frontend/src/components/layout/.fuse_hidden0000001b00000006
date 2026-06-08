@@ -43,7 +43,6 @@ const META = {
   "/portfolio": ["Portfolio", "Holdings, allocation & positions"],
   "/performance": ["Performance", "Risk-adjusted analytics"],
   "/trade": ["Trade", "Place simulated orders"],
-  "/quant": ["Quantitative Research Lab", "Six quant modules, one workspace"],
   "/regime": ["Market Regime", "Bull / Bear / Sideways detection"],
   "/optimizer": ["Smart Portfolio Optimizer", "Monte-Carlo efficient frontier"],
   "/options": ["Monte Carlo Option Pricer", "GBM simulation + Black-Scholes"],

@@ -39,7 +39,6 @@ const VolForecast     = lazy(() => import("./pages/VolForecast"));
 const Backtester      = lazy(() => import("./pages/Backtester"));
 const Predictor       = lazy(() => import("./pages/Predictor"));
 const Sentiment       = lazy(() => import("./pages/Sentiment"));
-const QuantLab        = lazy(() => import("./pages/QuantLab"));
 
 // ---- Fallbacks -------------------------------------------------------------
 
@@ -147,7 +146,6 @@ export default function App() {
             <Route path="portfolio"  element={<Portfolio />} />
             <Route path="performance" element={<Performance />} />
             <Route path="trade"      element={<Trade />} />
-            <Route path="quant"     element={<QuantLab />} />
             <Route path="regime"     element={<MarketRegime />} />
             <Route path="optimizer"  element={<Optimizer />} />
             <Route path="options"    element={<OptionPricer />} />
