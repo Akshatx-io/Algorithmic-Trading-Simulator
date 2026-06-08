@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   Activity, Loader2, User, Lock, Eye, EyeOff, ArrowRight,
-  Sigma, Box, LineChart, ShieldCheck, TrendingUp,
+  Sigma, Box, LineChart, ShieldCheck, TrendingUp, CornerDownLeft,
 } from "lucide-react";
 
 import { login as apiLogin } from "../services/authService";
@@ -13,6 +13,40 @@ const FEATURES = [
   { icon: Box, title: "3D volatility surface", desc: "SVI fit with Newton-Raphson IV inversion." },
   { icon: LineChart, title: "Backtests & ML signals", desc: "Sharpe, drawdown & a from-scratch Random Forest." },
 ];
+
+const COMMANDS = [
+  "price-option --mc 20000",
+  "vol-surface --fit svi",
+  "backtest --strategy ema",
+  "predict --rf 80-trees",
+  "sentiment --event-study",
+];
+
+/* typewriter that cycles through a list, typing then erasing */
+function useTypewriter(words) {
+  const [text, setText] = useState("");
+  useEffect(() => {
+    let to;
+    let i = 0, pos = 0, phase = "type";
+    const tick = () => {
+      const w = words[i % words.length];
+      if (phase === "type") {
+        pos++; setText(w.slice(0, pos));
+        if (pos >= w.length) { phase = "hold"; to = setTimeout(tick, 1500); return; }
+        to = setTimeout(tick, 55);
+      } else if (phase === "hold") {
+        phase = "erase"; to = setTimeout(tick, 0);
+      } else {
+        pos--; setText(w.slice(0, Math.max(0, pos)));
+        if (pos <= 0) { phase = "type"; i++; to = setTimeout(tick, 260); return; }
+        to = setTimeout(tick, 28);
+      }
+    };
+    to = setTimeout(tick, 500);
+    return () => clearTimeout(to);
+  }, [words]);
+  return text;
+}
 
 /* Live streaming equity chart — pure canvas, ~30fps, self-contained. */
 function MiniMarket() {
@@ -65,14 +99,42 @@ function MiniMarket() {
   return <div ref={wrap} className="h-[116px] w-full"><canvas ref={cv} className="block" /></div>;
 }
 
+const TILT_BASE = "perspective(1100px) rotateX(7deg) rotateY(-9deg)";
+
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [caps, setCaps] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const typed = useTypewriter(COMMANDS);
+
+  const asideRef = useRef(null);
+  const spotRef = useRef(null);
+  const tiltRef = useRef(null);
+
+  const onAsideMove = (e) => {
+    const el = asideRef.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    el.style.setProperty("--my", `${e.clientY - r.top}px`);
+    if (spotRef.current) spotRef.current.style.opacity = "1";
+  };
+  const onAsideLeave = () => { if (spotRef.current) spotRef.current.style.opacity = "0"; };
+
+  const onTilt = (e) => {
+    const el = tiltRef.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform = `perspective(1100px) rotateX(${7 - py * 11}deg) rotateY(${-9 + px * 13}deg)`;
+  };
+  const onTiltLeave = () => { if (tiltRef.current) tiltRef.current.style.transform = TILT_BASE; };
+
+  const capsCheck = (e) => { if (e.getModifierState) setCaps(e.getModifierState("CapsLock")); };
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -94,19 +156,24 @@ export default function Login() {
 
   return (
     <div className="relative grid min-h-screen grid-cols-1 overflow-hidden bg-ink-950 text-gray-100 lg:grid-cols-[1.05fr_1fr]">
-      {/* grain + global glow */}
       <div
         className="pointer-events-none absolute inset-0 z-0 opacity-[0.05] mix-blend-soft-light"
         style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }}
       />
 
       {/* ───────────── Brand panel ───────────── */}
-      <aside className="relative z-10 hidden flex-col justify-between overflow-hidden border-r border-line/80 p-10 xl:p-12 lg:flex">
+      <aside
+        ref={asideRef}
+        onMouseMove={onAsideMove}
+        onMouseLeave={onAsideLeave}
+        className="relative z-10 hidden flex-col justify-between overflow-hidden border-r border-line/80 p-10 xl:p-12 lg:flex"
+      >
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -left-28 -top-28 h-[26rem] w-[26rem] rounded-full bg-brand-500/25 blur-[90px] animate-[floatA_13s_ease-in-out_infinite]" />
           <div className="absolute right-[-6rem] top-1/3 h-80 w-80 rounded-full bg-emerald-500/20 blur-[90px] animate-[floatA_17s_ease-in-out_infinite_reverse]" />
           <div className="absolute bottom-[-4rem] left-1/3 h-72 w-72 rounded-full bg-sky-500/20 blur-[90px] animate-[floatA_11s_ease-in-out_infinite]" />
           <div className="absolute inset-0 bg-grid-faint opacity-30" style={{ backgroundSize: "26px 26px" }} />
+          <div ref={spotRef} className="absolute inset-0 opacity-0 transition-opacity duration-300" style={{ background: "radial-gradient(360px circle at var(--mx,50%) var(--my,50%), rgba(56,189,248,0.13), transparent 65%)" }} />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink-950/30 to-ink-950" />
         </div>
 
@@ -131,31 +198,43 @@ export default function Login() {
               in your browser.
             </span>
           </h1>
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-400">
-            Options, volatility surfaces, backtests and ML signals — every model from
-            first principles, every chart at 60fps.
-          </p>
 
-          {/* floating product preview */}
-          <div className="mt-9 hidden max-w-sm xl:block" style={{ transform: "perspective(1100px) rotateX(7deg) rotateY(-9deg)" }}>
-            <div className="animate-[floatY_7s_ease-in-out_infinite] rounded-2xl border border-line/70 bg-ink-900/70 p-4 shadow-2xl backdrop-blur-md">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-white">AAPL · Equity</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-up/10 px-1.5 py-0.5 text-[9px] font-semibold text-up ring-1 ring-up/30">
-                    <span className="h-1 w-1 animate-pulse rounded-full bg-up" /> LIVE
-                  </span>
-                </div>
-                <span className="tnum inline-flex items-center gap-0.5 text-xs font-semibold text-up"><TrendingUp size={12} /> +12.4%</span>
-              </div>
-              <MiniMarket />
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {[["Sharpe", "1.84"], ["Win rate", "61%"], ["Max DD", "-12%"]].map(([l, v]) => (
-                  <div key={l} className="rounded-lg border border-line/60 bg-ink-950/50 px-2 py-1.5 text-center">
-                    <p className="tnum text-xs font-semibold text-white">{v}</p>
-                    <p className="text-[9px] uppercase tracking-wide text-gray-500">{l}</p>
+          {/* terminal typewriter line */}
+          <div className="mt-5 flex items-center gap-2 rounded-lg border border-line/60 bg-ink-950/70 px-3 py-2 font-mono text-[13px] backdrop-blur">
+            <span className="text-brand-400">quant</span>
+            <span className="text-gray-600">❯</span>
+            <span className="text-gray-200">{typed}</span>
+            <span className="ml-0.5 inline-block h-3.5 w-[2px] animate-[blink_1s_step-end_infinite] bg-brand-400" />
+          </div>
+
+          {/* floating product preview (parallax tilt on hover) */}
+          <div className="mt-8 hidden max-w-sm xl:block">
+            <div
+              ref={tiltRef}
+              onMouseMove={onTilt}
+              onMouseLeave={onTiltLeave}
+              className="transition-transform duration-150 ease-out will-change-transform"
+              style={{ transform: TILT_BASE }}
+            >
+              <div className="animate-[floatY_7s_ease-in-out_infinite] rounded-2xl border border-line/70 bg-ink-900/70 p-4 shadow-2xl backdrop-blur-md">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-white">AAPL · Equity</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-up/10 px-1.5 py-0.5 text-[9px] font-semibold text-up ring-1 ring-up/30">
+                      <span className="h-1 w-1 animate-pulse rounded-full bg-up" /> LIVE
+                    </span>
                   </div>
-                ))}
+                  <span className="tnum inline-flex items-center gap-0.5 text-xs font-semibold text-up"><TrendingUp size={12} /> +12.4%</span>
+                </div>
+                <MiniMarket />
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {[["Sharpe", "1.84"], ["Win rate", "61%"], ["Max DD", "-12%"]].map(([l, v]) => (
+                    <div key={l} className="rounded-lg border border-line/60 bg-ink-950/50 px-2 py-1.5 text-center">
+                      <p className="tnum text-xs font-semibold text-white">{v}</p>
+                      <p className="text-[9px] uppercase tracking-wide text-gray-500">{l}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -193,7 +272,6 @@ export default function Login() {
             <p className="mt-1 text-sm text-gray-400">Sign in to your paper trading account.</p>
           </div>
 
-          {/* glass card with animated gradient border */}
           <div className="relative overflow-hidden rounded-2xl p-px shadow-2xl">
             <div
               className="pointer-events-none absolute -inset-[150%] animate-[spin_9s_linear_infinite]"
@@ -220,11 +298,18 @@ export default function Login() {
                   </div>
                   <div className="relative">
                     <Lock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
-                    <input id="password" type={show ? "text" : "password"} autoComplete="current-password" placeholder="••••••••" className={`${field} pr-11`} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                    <input
+                      id="password" type={show ? "text" : "password"} autoComplete="current-password" placeholder="••••••••"
+                      className={`${field} pr-11`} value={password}
+                      onChange={(e) => setPassword(e.target.value)} onKeyUp={capsCheck} onKeyDown={capsCheck} required
+                    />
                     <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-500 transition hover:bg-ink-700/60 hover:text-white">
                       {show ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {caps && (
+                    <p className="mt-1.5 animate-[fadeUp_0.2s_ease-out] text-xs text-amber-400">⇪ Caps Lock is on</p>
+                  )}
                 </div>
 
                 <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-gray-400">
@@ -238,6 +323,10 @@ export default function Login() {
                   <span className="relative">{loading ? "Signing in…" : "Sign in"}</span>
                   {!loading && <ArrowRight size={16} className="relative transition group-hover:translate-x-0.5" />}
                 </button>
+
+                <p className="flex items-center justify-center gap-1.5 text-[11px] text-gray-600">
+                  Press <kbd className="rounded border border-line bg-ink-950 px-1.5 py-0.5 font-sans text-[10px] text-gray-400"><CornerDownLeft size={10} className="inline" /> Enter</kbd> to sign in
+                </p>
               </form>
             </div>
           </div>
@@ -253,9 +342,8 @@ export default function Login() {
         @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         @keyframes floatA { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(22px,-26px) scale(1.07); } }
-        @media (prefers-reduced-motion: reduce) {
-          [class*="animate-"] { animation: none !important; }
-        }
+        @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) { [class*="animate-"] { animation: none !important; } }
       `}</style>
     </div>
   );
