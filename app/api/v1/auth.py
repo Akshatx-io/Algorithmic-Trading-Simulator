@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,7 @@ from app.auth.password import hash_password, verify_password
 from app.core.config import settings
 from app.core.database import get_async_db
 from app.core.logger import get_logger
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.models.user import User
 from app.schemas.user import UserCreate, UserLogin
 from app.services.auth_service import AuthError, auth_service
@@ -85,10 +85,13 @@ def _token_response(result) -> TokenResponse:
     )
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(5))],
+)
 async def register(
-    request: Request,
     payload: UserCreate,
     response: Response,
     db: AsyncSession = Depends(get_async_db),
@@ -101,10 +104,12 @@ async def register(
     return _token_response(result)
 
 
-@router.post("/login", response_model=TokenResponse)
-@limiter.limit("10/minute")
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit(10))],
+)
 async def login(
-    request: Request,
     payload: UserLogin,
     response: Response,
     db: AsyncSession = Depends(get_async_db),
@@ -117,10 +122,12 @@ async def login(
     return _token_response(result)
 
 
-@router.post("/refresh", response_model=TokenResponse)
-@limiter.limit("30/minute")
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit(30))],
+)
 async def refresh(
-    request: Request,
     response: Response,
     refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
     db: AsyncSession = Depends(get_async_db),
