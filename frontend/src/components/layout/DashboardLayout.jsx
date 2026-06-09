@@ -69,8 +69,8 @@ export default function DashboardLayout() {
             <Activity size={18} className="text-white" />
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-bold text-white">AI Trading</p>
-            <p className="text-xs text-gray-400">Terminal</p>
+            <p className="text-sm font-bold text-white">Algorithmic Trading</p>
+            <p className="text-xs text-gray-400">Simulator</p>
           </div>
         </div>
 

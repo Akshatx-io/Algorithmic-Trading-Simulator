@@ -162,7 +162,7 @@ export default function AuthScene({ children }) {
             <Activity size={20} className="text-white" />
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-bold text-white">AI Trading Terminal</p>
+            <p className="text-sm font-bold text-white">Algorithmic Trading Simulator</p>
             <p className="text-xs text-gray-400">Quantitative Research Lab</p>
           </div>
         </div>

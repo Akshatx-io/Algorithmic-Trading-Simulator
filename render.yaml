@@ -29,7 +29,7 @@ services:
 
   # ---- Web service: SPA + API + WebSocket (single same-origin process) ----
   - type: web
-    name: hft-terminal
+    name: algorithmic-trading-simulator
     runtime: docker
     plan: free
     region: oregon
@@ -56,7 +56,7 @@ services:
           property: connectionString
       # Same-origin deploy → allow the Render host (TrustedHostMiddleware).
       - key: ALLOWED_HOSTS
-        value: '["hft-terminal.onrender.com", "localhost", "127.0.0.1"]'
+        value: '["*.onrender.com", "localhost", "127.0.0.1"]'
       # Deterministic 24/7 synthetic market: zero external data dependencies.
       - key: USE_SYNTHETIC_MARKET
         value: "true"

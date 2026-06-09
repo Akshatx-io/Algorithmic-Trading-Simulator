@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Application identity
     # -------------------------------------------------------------------------
-    app_name:     str = "HFT Trading System"
+    app_name:     str = "Algorithmic Trading Simulator"
     app_version:  str = "0.2.0"
     environment:  str = "development"           # development | test | staging | production
     debug:        bool = False
