@@ -39,10 +39,9 @@ from fastapi.staticfiles import StaticFiles
 # (where the Vite server serves the SPA). Drives same-origin SPA hosting below.
 _FRONTEND_DIST = Path(__file__).resolve().parent / "frontend" / "dist"
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
 from app.api.routes import router as api_router
 from app.api.v1 import router as api_v1_router
@@ -67,7 +66,7 @@ from app.websocket.market_stream import start_market_stream
 # -----------------------------------------------------------------------------
 # Rate limiter
 # -----------------------------------------------------------------------------
-limiter = Limiter(key_func=get_remote_address)
+from app.core.rate_limit import limiter
 
 
 # -----------------------------------------------------------------------------
@@ -306,6 +305,10 @@ if _FRONTEND_DIST.is_dir():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
+        # Unknown API routes return a JSON 404 (never the SPA shell), so API
+        # consumers get a proper error instead of an HTML page.
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
         candidate = (_FRONTEND_DIST / full_path).resolve()
         root_dir = _FRONTEND_DIST.resolve()
         if candidate.is_file() and (candidate == root_dir or root_dir in candidate.parents):

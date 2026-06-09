@@ -21,11 +21,19 @@ def test_health(client: TestClient):
 def test_root(client: TestClient):
     res = client.get("/")
     assert res.status_code == 200
-    body = res.json()
-    assert body["name"]
-    assert body["version"]
+    ct = res.headers.get("content-type", "")
+    if "application/json" in ct:
+        # No SPA build present: root serves the API info document.
+        body = res.json()
+        assert body["name"]
+        assert body["version"]
+    else:
+        # SPA build present (production image): root serves index.html.
+        assert "text/html" in ct
 
 
-def test_unknown_path_returns_404(client: TestClient):
-    res = client.get("/definitely-not-a-real-endpoint")
+def test_unknown_api_path_returns_404(client: TestClient):
+    # Unknown API routes must return a JSON 404 -- never the SPA shell -- in
+    # both modes (no SPA build, or SPA build with the catch-all installed).
+    res = client.get("/api/v1/definitely-not-a-real-endpoint")
     assert res.status_code == 404

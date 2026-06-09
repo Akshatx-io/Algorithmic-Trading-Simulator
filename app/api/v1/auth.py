@@ -10,19 +10,19 @@ Token transport (audit 6.8, 3.11):
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user_async
 from app.auth.jwt_handler import TOKEN_TYPE_ACCESS, decode_token
+from app.auth.password import hash_password, verify_password
 from app.core.config import settings
 from app.core.database import get_async_db
 from app.core.logger import get_logger
+from app.core.rate_limit import limiter
 from app.models.user import User
-from app.auth.password import hash_password, verify_password
 from app.schemas.user import UserCreate, UserLogin
 from app.services.auth_service import AuthError, auth_service
 
@@ -37,9 +37,9 @@ COOKIE_PATH = "/api/v1/auth"
 class UserPublic(BaseModel):
     id:         int
     username:   str
-    email:      Optional[str] = None
+    email:      str | None = None
     balance:    float
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -86,7 +86,9 @@ def _token_response(result) -> TokenResponse:
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     payload: UserCreate,
     response: Response,
     db: AsyncSession = Depends(get_async_db),
@@ -94,13 +96,15 @@ async def register(
     try:
         result = await auth_service.register(db, payload.username, payload.password)
     except AuthError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     _set_refresh_cookie(response, result.refresh_token)
     return _token_response(result)
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     payload: UserLogin,
     response: Response,
     db: AsyncSession = Depends(get_async_db),
@@ -108,15 +112,17 @@ async def login(
     try:
         result = await auth_service.login(db, payload.username, payload.password)
     except AuthError as exc:
-        raise HTTPException(status_code=401, detail=str(exc))
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
     _set_refresh_cookie(response, result.refresh_token)
     return _token_response(result)
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("30/minute")
 async def refresh(
+    request: Request,
     response: Response,
-    refresh_token: Optional[str] = Cookie(default=None, alias=REFRESH_COOKIE),
+    refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
     db: AsyncSession = Depends(get_async_db),
 ) -> TokenResponse:
     if not refresh_token:
@@ -125,7 +131,7 @@ async def refresh(
         result = await auth_service.refresh(db, refresh_token)
     except AuthError as exc:
         _clear_refresh_cookie(response)
-        raise HTTPException(status_code=401, detail=str(exc))
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
     _set_refresh_cookie(response, result.refresh_token)
     return _token_response(result)
 
@@ -133,10 +139,10 @@ async def refresh(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     response: Response,
-    refresh_token: Optional[str] = Cookie(default=None, alias=REFRESH_COOKIE),
-    authorization: Optional[str] = Header(default=None),
+    refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
+    authorization: str | None = Header(default=None),
 ) -> Response:
-    jti: Optional[str] = None
+    jti: str | None = None
     if authorization and authorization.lower().startswith("bearer "):
         payload = decode_token(authorization[7:], expected_type=TOKEN_TYPE_ACCESS)
         if payload:
