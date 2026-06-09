@@ -8,7 +8,7 @@ zero cross-origin configuration.
 
 ```
                          ┌──────────────────────────────────────┐
-   browser  ── https ──▶ │  hft-terminal (Render web service)   │
+   browser  ── https ──▶ │  algorithmic-trading-simulator (web) │
    (SPA + API + WS,      │  Docker: Dockerfile.web              │
     one origin)          │   • Vite SPA  (/, /quant, …)         │
                          │   • REST API  (/api/v1/*)            │
@@ -33,11 +33,11 @@ resources at once.
    **Blueprint**.
 3. Connect the repository **`Akshatx-io/Algorithmic-Trading-Simulator`** and
    select the branch. Render detects `render.yaml`.
-4. Review the plan (3 free resources: `hft-db`, `hft-redis`, `hft-terminal`) and
+4. Review the plan (3 free resources: `hft-db`, `hft-redis`, `algorithmic-trading-simulator`) and
    click **Apply**.
 5. Wait for the first build (~4–7 min: it builds the SPA, installs Python deps,
-   then runs `alembic upgrade head` on boot). When `hft-terminal` is **Live**,
-   open its URL: `https://hft-terminal.onrender.com`.
+   then runs `alembic upgrade head` on boot). When `algorithmic-trading-simulator` is **Live**,
+   open its URL: `https://algorithmic-trading-simulator.onrender.com`.
 
 That's it — register an account and explore the Quant Lab.
 
@@ -71,7 +71,7 @@ Create the three resources by hand, in this order, all in the **same region**:
 | `JWT_SECRET_KEY` | *(generate)* | Must be **≥ 32 chars**. Blueprint uses `generateValue`. Manually: `openssl rand -hex 32`. |
 | `DATABASE_URL` | *from `hft-db`* | The app coerces `postgres://` → `postgresql://` automatically. |
 | `REDIS_URL` | *from `hft-redis`* | Internal `redis://…` URL. |
-| `ALLOWED_HOSTS` | `["*"]` | **JSON array** (the app JSON-parses list envs — *not* comma-separated). Tighten to `["hft-terminal.onrender.com"]` after first deploy. |
+| `ALLOWED_HOSTS` | `["*.onrender.com", "localhost", "127.0.0.1"]` | **JSON array** (the app JSON-parses list envs — *not* comma-separated). The `*.onrender.com` wildcard accepts the service subdomain (even if Render suffixes it); `localhost`/`127.0.0.1` keep the health probes passing. |
 | `USE_SYNTHETIC_MARKET` | `true` | Deterministic 24/7 market; no external data deps. |
 | `USE_FAKE_REDIS` | `false` | Use the real managed Redis. |
 | `LOG_LEVEL` | `INFO` | |
@@ -86,14 +86,14 @@ Create the three resources by hand, in this order, all in the **same region**:
 
 ```bash
 # 1. Health (DB connectivity)
-curl https://hft-terminal.onrender.com/health
+curl https://algorithmic-trading-simulator.onrender.com/health
 # -> {"status":"healthy","database":"connected","environment":"production",...}
 
 # 2. API docs
-open https://hft-terminal.onrender.com/docs
+open https://algorithmic-trading-simulator.onrender.com/docs
 
 # 3. A quant endpoint (auth-free analytics)
-curl "https://hft-terminal.onrender.com/api/v1/vol/surface?s=100&base_vol=0.22"
+curl "https://algorithmic-trading-simulator.onrender.com/api/v1/vol/surface?s=100&base_vol=0.22"
 # -> {"status":"success", ...}
 ```
 

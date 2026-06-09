@@ -21,7 +21,7 @@
 
 <br/>
 
-[![Deploy to Render](https://img.shields.io/badge/Deploy%20to-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/deploy?repo=https://github.com/Akshatx-io/Algorithmic-Trading-Simulator) · **[Deployment Guide](./DEPLOY.md)**
+**▶ [Live demo](https://algorithmic-trading-simulator.onrender.com)** · [![Deploy to Render](https://img.shields.io/badge/Deploy%20to-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/deploy?repo=https://github.com/Akshatx-io/Algorithmic-Trading-Simulator) · **[Deployment Guide](./DEPLOY.md)**
 
 <br/>
 
