@@ -39,7 +39,7 @@ resources at once.
    then runs `alembic upgrade head` on boot). When `algorithmic-trading-simulator` is **Live**,
    open its URL: `https://algorithmic-trading-simulator.onrender.com`.
 
-That's it — register an account and explore the Quant Lab.
+That's it — click **"Explore the live demo"** for a one-click populated account, or register your own, and explore the Quant Lab.
 
 > **Render deploy button** (add to README once the repo is public):
 > `https://render.com/deploy?repo=https://github.com/Akshatx-io/Algorithmic-Trading-Simulator`
@@ -97,7 +97,7 @@ curl "https://algorithmic-trading-simulator.onrender.com/api/v1/vol/surface?s=10
 # -> {"status":"success", ...}
 ```
 
-Then in the browser: **register → log in → place a trade → open Quant Lab**.
+Then in the browser: click **"Explore the live demo"** (one-click, pre-seeded), or **register → log in → place a trade → open Quant Lab**.
 The WebSocket connects to `wss://<host>/api/v1/ws` automatically (derived from
 the page origin).
 
@@ -128,12 +128,21 @@ production uses managed Postgres + Redis.)*
   the first request then cold-starts (~30–60 s). Fine for a demo.
 - **Free Postgres expires.** Render's free Postgres is time-limited (~30 days);
   recreate it (and re-apply the blueprint) when it lapses.
-- **Single worker by design.** `scripts/start.sh` runs one uvicorn worker — the
-  background market/candle/signal engines live in the FastAPI lifespan, so
-  multiple workers would duplicate them. Scale vertically, not by workers.
-- **Migrations run on boot** (`alembic upgrade head` in `start.sh`) — no manual
-  step needed.
-- **Tighten hosts** after first deploy: set `ALLOWED_HOSTS=["<your-host>"]`.
+- **Single worker by design.** The container starts one uvicorn worker (the
+  start command is inlined in `Dockerfile.web`) — the background
+  market/candle/signal engines live in the FastAPI lifespan, so multiple
+  workers would duplicate them. Scale vertically, not by workers.
+- **Migrations run on boot.** The `Dockerfile.web` start command runs
+  `alembic upgrade head`, falling back to `Base.metadata.create_all` if a
+  migration fails, so a valid schema is always present — no manual step.
+- **Host allow-listing is already on.** The blueprint sets
+  `ALLOWED_HOSTS=["*.onrender.com", "localhost", "127.0.0.1"]`, which accepts
+  your service subdomain (even if Render appends a suffix) plus the health
+  probes, while rejecting arbitrary `Host` headers. Narrow it to your exact
+  host if you prefer.
+- **One-click guest demo.** Visitors can hit **"Explore the live demo"** on the
+  login page (`POST /api/v1/auth/demo`) to land in a freshly-seeded, populated
+  account — no signup. The demo account is sandboxed and reset on each use.
 
 ---
 

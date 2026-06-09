@@ -996,6 +996,8 @@ Phase 2 finishes with a correct, tested, structured platform. Phase 3 makes it l
 
 **Objective:** Prometheus metrics, structured logs, Sentry integration, one-command deploy to Fly.io or Railway.
 
+> **✅ Shipped (ahead of schedule).** Public deployment is **live** at **<https://algorithmic-trading-simulator.onrender.com>** via a same-origin Render Blueprint (`render.yaml` → web service + managed Postgres + Redis; see [`DEPLOY.md`](./DEPLOY.md)) — Render was chosen over Fly.io/Vercel because a single same-origin service keeps the httpOnly refresh cookie, WebSocket, and CORS configuration-free. Also delivered from this phase: **structured JSON logs** in production (loguru `serialize=True`), **per-IP auth rate limiting**, host hardening via `TrustedHostMiddleware`, and a **one-click guest demo** (`POST /auth/demo`). Still open: Prometheus `/metrics`, the Grafana dashboard, and Sentry.
+
 **Tasks:**
 
 1. **`prometheus-client` integration.**
@@ -1014,8 +1016,8 @@ Phase 2 finishes with a correct, tested, structured platform. Phase 3 makes it l
    - Volume mount for Postgres (or use Fly Postgres).
    - Frontend deployed to Vercel (Vite static build) or as a separate Fly app.
 
-5. **Demo URL in README.**
-   - Public URL with a demo account credentials in README, so a recruiter can click and try.
+5. **Demo URL in README.** ✅ *Done — one click, no credentials.*
+   - Live URL is in the README; a **one-click "Explore the live demo"** button (`POST /auth/demo`) signs visitors into a freshly-seeded, populated account — better than copy-pasting credentials.
 
 **Duration:** 2 working days.
 
@@ -1086,7 +1088,8 @@ These apply throughout every phase.
 - All inputs validated by Pydantic at the API boundary.
 - All money math in Decimal.
 - All user-scoped queries explicitly filter by user_id.
-- Per-IP rate limit on auth endpoints (5 attempts / minute) — Phase 3.3.
+- Per-IP rate limit on auth endpoints — ✅ **shipped** (register 5/min, login 10/min, refresh 30/min, demo 20/min) via a FastAPI dependency limiter.
+- Host allow-listing via `TrustedHostMiddleware` (locked to the deploy host) — ✅ **shipped**.
 
 ### Documentation cadence
 - Every phase ends with a doc update commit: roadmap status, ADRs written, README links updated.

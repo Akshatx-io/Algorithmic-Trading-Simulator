@@ -17,7 +17,7 @@
 
 <br/>
 
-**[Architecture](./ARCHITECTURE.md)** · **[Audit](./AUDIT.md)** · **[Roadmap](./ROADMAP.md)** · **[API Docs](http://localhost:8000/docs)** *(once running)*
+**[Architecture](./ARCHITECTURE.md)** · **[Audit](./AUDIT.md)** · **[Roadmap](./ROADMAP.md)** · **[Live API Docs](https://algorithmic-trading-simulator.onrender.com/docs)**
 
 <br/>
 
@@ -42,6 +42,10 @@ On top of that platform sits a **Quantitative Research Lab**: six self-contained
 ---
 
 ## Try it in 60 seconds
+
+**Zero setup —** open the **[live demo](https://algorithmic-trading-simulator.onrender.com)** and click **"Explore the live demo."** One click drops you into a fully populated account — open positions with live unrealized PnL, realized gains from closed round-trips, a 30-day equity curve, and trade history. No signup, no credit card.
+
+**Run it locally:**
 
 ```bash
 git clone https://github.com/Akshatx-io/Algorithmic-Trading-Simulator.git
@@ -207,6 +211,9 @@ Float arithmetic on currency is an interview disqualifier. Monetary values use `
 ### Tokens never touch localStorage
 Access tokens live **in memory only** (Zustand). Refresh tokens live in an **httpOnly, samesite=lax cookie scoped to `/api/v1/auth`** — unreachable from JS, rotated on every refresh. The WebSocket handshake uses a **separate short-lived JWT** so proxy logs never contain a long-lived token. *Audit [3.1, 3.11, 6.8].*
 
+### Hardened for a public URL
+Auth endpoints (register / login / refresh / demo) are **per-IP rate-limited** through a FastAPI dependency — deliberately *not* the slowapi decorator, which silently makes a Pydantic request body parse as a query parameter. `TrustedHostMiddleware` is locked to the deploy host, production logs are **structured JSON** (loguru `serialize`), and a **sandboxed one-click guest demo** re-seeds a curated account on every use so visitors always get a polished first impression.
+
 ### Idempotent mutations
 Every mutating request carries an idempotency key; the server consults Redis first — same key + same body → cached response, same key + different body → `409`, new key → execute. Replay-on-network-error is safe by construction. *Architecture §1.6.*
 
@@ -238,6 +245,8 @@ The original codebase carried ~1,900 lines of commented-out previous-generation 
 - Equity-history snapshots & living equity curve
 - Pre-trade risk gate
 - Paper-account management + reset
+- **One-click guest demo** — seeded portfolio, trades & equity curve
+- Per-IP rate-limited auth + trusted-host hardening
 - Async SQLAlchemy 2.0 · multi-stage Docker · CI
 
 </td>

@@ -184,7 +184,7 @@ Routes are split per domain. Each file owns one resource family:
 ```
 app/api/v1/
 ├── __init__.py          # combines all routers into one
-├── auth.py              # /auth/{register,login,refresh,logout}
+├── auth.py              # /auth/{register,login,refresh,logout,demo,ws-token} — per-IP rate-limited
 ├── portfolio.py         # /portfolio, /portfolio/history, /portfolio/positions
 ├── trading.py           # /orders (POST/GET/DELETE), /trades, /fills
 ├── market.py            # /market, /market/{symbol}, /candles/{symbol}
