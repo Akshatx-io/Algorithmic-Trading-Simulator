@@ -41,6 +41,15 @@ export async function login({ username, password }) {
   return data;
 }
 
+export async function demoLogin() {
+  const { data } = await apiClient.post("/auth/demo");
+  useAuthStore.getState().setAuth({
+    accessToken: data.access_token,
+    user: data.user,
+  });
+  return data;
+}
+
 export async function logout() {
   try {
     await apiClient.post("/auth/logout");

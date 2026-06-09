@@ -186,3 +186,6 @@ secrets/
 *.backup
 # transient build-verification output (sandbox)
 frontend/dist_*/
+
+# Editor / FUSE artifacts
+.fuse_hidden*

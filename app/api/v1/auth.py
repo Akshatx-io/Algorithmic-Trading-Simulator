@@ -9,6 +9,7 @@ Token transport (audit 6.8, 3.11):
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Response, status
@@ -24,6 +25,7 @@ from app.core.logger import get_logger
 from app.core.rate_limit import rate_limit
 from app.models.user import User
 from app.schemas.user import UserCreate, UserLogin
+from app.seed.demo import DEMO_PASSWORD, DEMO_USERNAME, seed_demo_account
 from app.services.auth_service import AuthError, auth_service
 
 logger = get_logger("api.v1.auth")
@@ -118,6 +120,27 @@ async def login(
         result = await auth_service.login(db, payload.username, payload.password)
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
+    _set_refresh_cookie(response, result.refresh_token)
+    return _token_response(result)
+
+
+@router.post(
+    "/demo",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit(20))],
+)
+async def demo_login(
+    response: Response,
+    db: AsyncSession = Depends(get_async_db),
+) -> TokenResponse:
+    """One-click demo sign-in: (re)seed a curated, populated account and issue
+    tokens for it through the normal login flow. The demo account is sandboxed
+    and reset on every use."""
+    await asyncio.to_thread(seed_demo_account)
+    try:
+        result = await auth_service.login(db, DEMO_USERNAME, DEMO_PASSWORD)
+    except AuthError as exc:
+        raise HTTPException(status_code=503, detail="Demo is temporarily unavailable") from exc
     _set_refresh_cookie(response, result.refresh_token)
     return _token_response(result)
 

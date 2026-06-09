@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   LogOut,
   Activity,
+  Rocket,
 } from "lucide-react";
 
 import useAuth from "../../hooks/useAuth";
@@ -152,6 +153,14 @@ export default function DashboardLayout() {
           className="flex-1 overflow-y-auto overflow-x-hidden bg-grid-faint p-5 lg:p-8"
           style={{ backgroundSize: "22px 22px" }}
         >
+          {user?.username === "demo" && (
+            <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-brand-500/30 bg-brand-500/10 px-4 py-2.5 text-xs text-brand-200">
+              <Rocket size={15} className="shrink-0" />
+              <span>
+                <strong className="font-semibold text-brand-100">Demo mode</strong> — explore everything freely. This is a shared, sandboxed account that resets whenever someone starts a new demo.
+              </span>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

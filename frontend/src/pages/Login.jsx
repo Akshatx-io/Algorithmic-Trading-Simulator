@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Loader2, User, Lock, Eye, EyeOff, ArrowRight, Activity, CornerDownLeft } from "lucide-react";
+import { Loader2, User, Lock, Eye, EyeOff, ArrowRight, Activity, CornerDownLeft, Rocket } from "lucide-react";
 
-import { login as apiLogin } from "../services/authService";
+import { login as apiLogin, demoLogin } from "../services/authService";
 import AuthScene, { GlassCard, FIELD } from "../components/auth/AuthScene";
 
 export default function Login() {
@@ -14,6 +14,7 @@ export default function Login() {
   const [caps, setCaps] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const navigate = useNavigate();
 
   const capsCheck = (e) => { if (e.getModifierState) setCaps(e.getModifierState("CapsLock")); };
@@ -30,6 +31,21 @@ export default function Login() {
       setError(typeof err?.message === "string" ? err.message : "Invalid credentials");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDemo() {
+    if (demoLoading) return;
+    setError("");
+    setDemoLoading(true);
+    try {
+      await demoLogin();
+      toast.success("Welcome to the demo");
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(typeof err?.message === "string" ? err.message : "Demo unavailable. Try again.");
+    } finally {
+      setDemoLoading(false);
     }
   }
 
@@ -86,6 +102,22 @@ export default function Login() {
             Press <kbd className="rounded border border-line bg-ink-950 px-1.5 py-0.5 font-sans text-[10px] text-gray-400"><CornerDownLeft size={10} className="inline" /> Enter</kbd> to sign in
           </p>
         </form>
+
+        <div className="mt-5 flex items-center gap-3">
+          <span className="h-px flex-1 bg-line" />
+          <span className="text-[11px] uppercase tracking-wider text-gray-600">or</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDemo}
+          disabled={demoLoading}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-500/30 bg-brand-500/10 py-3 text-sm font-semibold text-brand-200 transition duration-200 hover:-translate-y-0.5 hover:bg-brand-500/15 active:translate-y-0 disabled:opacity-50">
+          {demoLoading ? <Loader2 size={16} className="animate-spin" /> : <Rocket size={16} />}
+          <span>{demoLoading ? "Loading demo…" : "Explore the live demo"}</span>
+        </button>
+        <p className="mt-2 text-center text-[11px] text-gray-600">No signup — jump straight into a populated account.</p>
       </GlassCard>
 
       <p className="mt-6 text-center text-sm text-gray-400">
