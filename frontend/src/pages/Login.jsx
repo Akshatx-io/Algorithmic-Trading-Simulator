@@ -27,7 +27,7 @@ export default function Login() {
       toast.success("Welcome back");
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err?.message || err?.data?.detail || "Invalid credentials");
+      setError(typeof err?.message === "string" ? err.message : "Invalid credentials");
     } finally {
       setLoading(false);
     }

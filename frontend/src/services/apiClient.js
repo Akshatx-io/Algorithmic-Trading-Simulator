@@ -127,15 +127,27 @@ apiClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject({
-      message:
-        error.response.data?.detail ||
-        error.response.data?.message ||
-        `Request failed (${status})`,
-      status,
-      kind: "api",
-      data: error.response.data,
-    });
+    // Normalize the server error into a human-readable string. FastAPI 422
+    // validation errors arrive as `detail: [{ loc, msg, ... }]` (an array of
+    // objects); rendering that array as JSX crashes React (#31), so flatten it
+    // to "field: message" here. String details (400/401) pass through.
+    const detail = error.response.data?.detail;
+    let message;
+    if (Array.isArray(detail)) {
+      message = detail
+        .map((d) => {
+          const field = Array.isArray(d?.loc) ? d.loc[d.loc.length - 1] : null;
+          const msg = d?.msg || (typeof d === "string" ? d : JSON.stringify(d));
+          return field && field !== "body" ? `${field}: ${msg}` : msg;
+        })
+        .join("; ");
+    } else if (typeof detail === "string") {
+      message = detail;
+    }
+    message =
+      message || error.response.data?.message || `Request failed (${status})`;
+
+    return Promise.reject({ message, status, kind: "api", data: error.response.data });
   }
 );
 

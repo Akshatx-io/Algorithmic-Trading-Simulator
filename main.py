@@ -267,7 +267,7 @@ app.include_router(api_router,    prefix="/api/v1")
 async def root(request: Request):
     # In production the built SPA is served from the same origin as the API.
     if _FRONTEND_DIST.is_dir():
-        return FileResponse(_FRONTEND_DIST / "index.html")
+        return FileResponse(_FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})
     return {
         "name":    settings.app_name,
         "version": settings.app_version,
@@ -313,7 +313,7 @@ if _FRONTEND_DIST.is_dir():
         root_dir = _FRONTEND_DIST.resolve()
         if candidate.is_file() and (candidate == root_dir or root_dir in candidate.parents):
             return FileResponse(candidate)
-        return FileResponse(_FRONTEND_DIST / "index.html")
+        return FileResponse(_FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 # -----------------------------------------------------------------------------
