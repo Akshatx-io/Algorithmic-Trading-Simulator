@@ -163,13 +163,9 @@ exclude = ["alembic/versions/", "frontend/"]
 module = "yfinance.*"
 ignore_missing_imports = true
 
-["tests"]
-addopts = "-ra -q --strict-markers --tb=short"
-markers = [
-    "unit: pure unit tests, no I/O",
-    "integration: integration tests (db, redis, http)",
-    "slow: tests >1s",
-]
-filterwarnings = [
-    "ignore::DeprecationWarning:passlib.*",
-]
+# NOTE: pytest configuration lives in pytest.ini, which is the single source of
+# truth. A stray top-level `["tests"]` table used to sit here — valid TOML, but
+# a table literally named "tests", not `[tool.pytest.ini_options]`. pytest never
+# read it, so its addopts/markers/filterwarnings were silently inert while
+# pytest.ini supplied the real values. Removed rather than converted, to avoid
+# two competing config sources (pytest.ini wins over pyproject.toml anyway).

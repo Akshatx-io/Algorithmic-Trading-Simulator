@@ -8,8 +8,7 @@ Carries the full state machine:
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
@@ -47,15 +46,24 @@ class TimeInForce(str, Enum):
 class Order(Base):
     __tablename__ = "orders"
 
+    # Indexes are declared in __table_args__ below rather than via per-column
+    # `index=True`, so the ORM and 0001_baseline agree exactly. The hot lookups
+    # are compound ("my open orders", "open orders in a symbol"), and a
+    # composite index serves those; three single-column indexes do not.
+    __table_args__ = (
+        Index("ix_orders_user_status",   "user_id", "status"),
+        Index("ix_orders_symbol_status", "symbol",  "status"),
+    )
+
     id               = Column(Integer, primary_key=True, index=True)
     client_order_id  = Column(String(64), nullable=False, unique=True, index=True)
-    user_id          = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id          = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    symbol           = Column(String(16), nullable=False, index=True)
+    symbol           = Column(String(16), nullable=False)
     side             = Column(String(8), nullable=False)         # BUY | SELL
     order_type       = Column(String(16), nullable=False)        # MARKET | LIMIT | STOP | STOP_LIMIT
     time_in_force    = Column(String(8), nullable=False, default=TimeInForce.GTC.value)
-    status           = Column(String(16), nullable=False, default=OrderStatus.PENDING.value, index=True)
+    status           = Column(String(16), nullable=False, default=OrderStatus.PENDING.value)
 
     quantity         = Column(Float, nullable=False)
     filled_quantity  = Column(Float, nullable=False, default=0.0)

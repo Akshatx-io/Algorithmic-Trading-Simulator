@@ -280,6 +280,12 @@ async def root(request: Request):
 @app.get("/health")
 @limiter.limit("30/minute")
 async def health(request: Request):
+    """Readiness: is this instance able to serve traffic? Touches the database.
+
+    This is the endpoint a load balancer or platform health check should use
+    (Render's `healthCheckPath`), because an instance that cannot reach its
+    database should be taken out of rotation.
+    """
     db_ok = await check_database_connection()
     return {
         "status":      "healthy" if db_ok else "unhealthy",
@@ -287,6 +293,20 @@ async def health(request: Request):
         "environment": settings.environment,
         "version":     settings.app_version,
     }
+
+
+@app.get("/health/live")
+async def liveness():
+    """Liveness: is this process alive? No I/O, no rate limit.
+
+    Deliberately separate from /health. High-frequency probes — the container
+    HEALTHCHECK, nginx upstream checks, a CDN origin check — must not each cost
+    a database round-trip, and must not restart a healthy API process just
+    because the database blipped. Liveness answers "should I be restarted?";
+    readiness answers "should I get traffic?". Conflating them means a transient
+    database fault kills the very process that would have recovered from it.
+    """
+    return {"status": "alive", "version": settings.app_version}
 
 
 # -----------------------------------------------------------------------------

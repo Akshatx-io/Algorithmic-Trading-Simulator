@@ -39,6 +39,12 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/build/
+# Stale local build outputs (dist_auth, dist_login2, dist_check, …). The
+# pattern above ends at `dist/` and does NOT match these, so without this line
+# every abandoned build directory ships into the image.
+frontend/dist_*/
+# FUSE half-written file remnants left by editors on network/virtual mounts.
+**/.fuse_hidden*
 npm-debug.log*
 yarn-debug.log*
 
