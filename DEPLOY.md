@@ -124,8 +124,30 @@ production uses managed Postgres + Redis.)*
 
 ## Notes & gotchas
 
-- **Free tier sleeps.** A free Render web service spins down after ~15 min idle;
-  the first request then cold-starts (~30–60 s). Fine for a demo.
+- **Free tier sleeps — but this repo keeps it awake.** A free Render web service
+  spins down after ~15 min idle and the next visitor waits 30–60 s for a cold
+  start. For a demo linked from a CV that is the worst possible first
+  impression, so
+  [`.github/workflows/keep-demo-warm.yml`](./.github/workflows/keep-demo-warm.yml)
+  supplies the traffic itself: it pings `/health/live` every 10 minutes, which
+  is inside Render's idle window, with a retry loop that absorbs GitHub's
+  scheduler drift. Actions minutes are unmetered on public repositories, so
+  this costs nothing. That workflow never fails on a bad response — a red X
+  every ten minutes is noise, not signal — and emits a warning annotation
+  instead.
+
+  > ⚠️ **GitHub disables scheduled workflows on a public repository after 60
+  > days with no repository activity.** If you stop pushing for two months the
+  > pings silently stop and the demo starts sleeping again. Re-enable it from
+  > the **Actions** tab.
+
+- **The demo can look "up" while being entirely broken.** `/health/live` is a
+  liveness probe and touches no I/O by design, so the keep-warm ping stays
+  green even when the database has expired. A second job in the same workflow
+  therefore checks the deep `/health` endpoint once a day at 03:30 UTC and
+  **fails loudly** unless it reports `"database":"connected"`, so a failed-run
+  email reaches you within a day of the 30-day Postgres expiry rather than
+  whenever someone happens to open the link.
 - **Free Postgres expires.** Render's free Postgres is time-limited (~30 days),
   after which the dashboard shows **"Suspended by Render"**. A suspended free
   instance cannot be resumed — see

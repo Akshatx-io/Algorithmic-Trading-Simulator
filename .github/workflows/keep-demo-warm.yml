@@ -1,0 +1,107 @@
+# =============================================================================
+# Keep the public demo warm, and notice when it breaks.
+#
+# Render's free web services spin down after ~15 minutes with no inbound
+# traffic, and the next visitor then waits 30-60s for a cold start. For a demo
+# linked from a CV that is the worst possible first impression, so this
+# workflow supplies the traffic.
+#
+# Two jobs, deliberately different in temperament:
+#
+#   ping         every 10 min, NEVER fails. Its job is to keep the dyno awake.
+#                A red X every ten minutes is noise, not signal, so a bad
+#                response is a warning annotation and exit 0.
+#
+#   deep-health  once a day, FAILS LOUDLY. Its job is to tell you the database
+#                is gone. Render's free Postgres expires 30 days after
+#                creation, and `ping` alone would never notice: it probes
+#                /health/live, which deliberately touches no I/O. So the site
+#                would look "up" while every actual feature was broken. A
+#                failing job here sends the normal GitHub failure email.
+#
+# Minutes are free: Actions is unmetered on public repositories.
+#
+# !! CAVEAT: GitHub disables scheduled workflows on a public repository after
+# !! 60 days with no repository activity. If you stop pushing for two months
+# !! this silently stops and the demo starts sleeping again. Re-enable it from
+# !! the Actions tab, or just push something.
+# =============================================================================
+
+name: keep-demo-warm
+
+on:
+  schedule:
+    # Every 10 minutes. Render idles out at ~15, and GitHub's scheduler can run
+    # several minutes late under load, so the retry loop below absorbs drift
+    # rather than relying on the cron firing punctually.
+    - cron: "*/10 * * * *"
+    # Once a day at 03:30 UTC (09:00 IST) for the deep check.
+    - cron: "30 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never let a slow run pile up behind the next scheduled one.
+  group: keep-demo-warm
+  cancel-in-progress: false
+
+env:
+  # Override by setting an Actions variable named DEMO_URL (Settings ->
+  # Secrets and variables -> Actions -> Variables) if the demo ever moves.
+  BASE_URL: ${{ vars.DEMO_URL || 'https://algorithmic-trading-simulator.onrender.com' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  ping:
+    name: keep warm
+    # Skip on the daily cron so the two jobs never double up.
+    if: github.event.schedule != '30 3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wake /health/live
+        run: |
+          set -u
+          URL="${BASE_URL%/}/health/live"
+          echo "probing $URL"
+          for i in 1 2 3 4 5 6; do
+            # `|| true` rather than `|| echo 000`: curl already prints 000 on
+            # failure, so echoing again concatenated to "000000". stderr is left
+            # visible on purpose, so the log names the cause (DNS, timeout, TLS).
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 70 "$URL") || true
+            echo "  attempt $i -> HTTP ${code:-000}"
+            if [ "$code" = "200" ]; then
+              echo "service is awake"
+              exit 0
+            fi
+            if [ "$i" -lt 6 ]; then sleep 45; fi
+          done
+          echo "::warning title=Demo unreachable::No 200 from $URL after 6 attempts over ~4 min. Idle spin-up takes 30-60s, so this usually means the service is failed rather than merely asleep. Check the Render dashboard."
+          # Deliberately exit 0 -- see the header comment.
+          exit 0
+
+  # ---------------------------------------------------------------------------
+  deep-health:
+    name: database reachable
+    if: github.event.schedule == '30 3 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check /health reports a connected database
+        run: |
+          set -u
+          URL="${BASE_URL%/}/health"
+          echo "probing $URL"
+          body=""
+          for i in 1 2 3 4 5 6; do
+            body=$(curl -sS --max-time 70 "$URL" || true)
+            echo "  attempt $i -> ${body:-<no response>}"
+            case "$body" in
+              *'"database":"connected"'*) echo "database is connected"; exit 0 ;;
+            esac
+            if [ "$i" -lt 6 ]; then sleep 45; fi
+          done
+          echo "::error title=Demo database unreachable::/health did not report a connected database. Render's free Postgres expires 30 days after creation and cannot be resumed -- it must be deleted and the blueprint re-synced. See DEPLOY.md 'Recovering from a suspended database'."
+          exit 1
