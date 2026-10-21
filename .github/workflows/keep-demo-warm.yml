@@ -43,9 +43,10 @@ permissions:
   contents: read
 
 concurrency:
-  # Never let a slow run pile up behind the next scheduled one.
+  # A newer ping supersedes an older one. With `false`, runs queued behind a
+  # hung attempt were cancelled by GitHub and showed up as failures.
   group: keep-demo-warm
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   # Override by setting an Actions variable named DEMO_URL (Settings ->
@@ -59,26 +60,39 @@ jobs:
     # Skip on the daily cron so the two jobs never double up.
     if: github.event.schedule != '30 3 * * *'
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    # Must exceed the loop's worst case below (300s) with margin to spare.
+    timeout-minutes: 7
     steps:
       - name: Wake /health/live
         run: |
           set -u
           URL="${BASE_URL%/}/health/live"
           echo "probing $URL"
-          for i in 1 2 3 4 5 6; do
+          # Budget: 3 x 90s curl + 2 x 15s sleep = 300s worst case.
+          #
+          # Sized against the failure mode actually observed: a failed Render
+          # service completes the TLS handshake and then never responds, so a
+          # dead host costs the FULL --max-time on every attempt rather than
+          # erroring out quickly. An earlier 6 x 70s + 5 x 45s loop therefore
+          # ran 10m45s against this service and was killed by the job timeout
+          # on every single scheduled run.
+          #
+          # 90s per attempt is deliberate: a warm instance answers in well
+          # under a second, but a spun-down one needs 30-120s to cold start,
+          # and this request is what wakes it.
+          for i in 1 2 3; do
             # `|| true` rather than `|| echo 000`: curl already prints 000 on
             # failure, so echoing again concatenated to "000000". stderr is left
             # visible on purpose, so the log names the cause (DNS, timeout, TLS).
-            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 70 "$URL") || true
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 "$URL") || true
             echo "  attempt $i -> HTTP ${code:-000}"
             if [ "$code" = "200" ]; then
               echo "service is awake"
               exit 0
             fi
-            if [ "$i" -lt 6 ]; then sleep 45; fi
+            if [ "$i" -lt 3 ]; then sleep 15; fi
           done
-          echo "::warning title=Demo unreachable::No 200 from $URL after 6 attempts over ~4 min. Idle spin-up takes 30-60s, so this usually means the service is failed rather than merely asleep. Check the Render dashboard."
+          echo "::warning title=Demo unreachable::No 200 from $URL after 3 attempts over ~5 min. A spun-down instance answers within 120s, so this means the service is failed rather than asleep. Check the Render dashboard."
           # Deliberately exit 0 -- see the header comment.
           exit 0
 
@@ -87,7 +101,8 @@ jobs:
     name: database reachable
     if: github.event.schedule == '30 3 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    # 3 x 90s curl + 2 x 15s sleep = 300s worst case; same reasoning as `ping`.
+    timeout-minutes: 7
     steps:
       - name: Check /health reports a connected database
         run: |
@@ -95,13 +110,13 @@ jobs:
           URL="${BASE_URL%/}/health"
           echo "probing $URL"
           body=""
-          for i in 1 2 3 4 5 6; do
-            body=$(curl -sS --max-time 70 "$URL" || true)
+          for i in 1 2 3; do
+            body=$(curl -sS --max-time 90 "$URL" || true)
             echo "  attempt $i -> ${body:-<no response>}"
             case "$body" in
               *'"database":"connected"'*) echo "database is connected"; exit 0 ;;
             esac
-            if [ "$i" -lt 6 ]; then sleep 45; fi
+            if [ "$i" -lt 3 ]; then sleep 15; fi
           done
           echo "::error title=Demo database unreachable::/health did not report a connected database. Render's free Postgres expires 30 days after creation and cannot be resumed -- it must be deleted and the blueprint re-synced. See DEPLOY.md 'Recovering from a suspended database'."
           exit 1
