@@ -45,7 +45,14 @@ dependencies = [
     "pydantic-settings>=2.6.0,<3",
 
     # Database (async SQLAlchemy 2.0 stack per ADR-0001)
-    "sqlalchemy[asyncio]>=2.0.36,<3",
+    # Pinned to the 2.0 line, not <3. SQLAlchemy 2.1 is a breaking release:
+    # it changed the DBAPI a bare `postgresql://` resolves to (psycopg2 ->
+    # psycopg v3), which silently broke the deployed image on a rebuild even
+    # though no application code had changed. The URL helpers in
+    # app/core/config.py now name the driver explicitly so that specific
+    # failure cannot recur, but the app is tested against 2.0 -- lift this
+    # ceiling deliberately, with a test run, not implicitly on a redeploy.
+    "sqlalchemy[asyncio]>=2.0.36,<2.1",
     "asyncpg>=0.30.0,<0.31",                  # async Postgres driver
     "psycopg2-binary>=2.9.10,<3",             # sync driver (alembic + admin tools)
     "aiosqlite>=0.20.0,<0.21",                # async SQLite for tests

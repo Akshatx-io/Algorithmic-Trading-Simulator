@@ -22,7 +22,7 @@ from alembic import context
 # Make the app package importable when alembic runs from the repo root.
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.core.config import settings
+from app.core.config import settings, to_sync_pg_url
 from app.models import Base
 
 config = context.config
@@ -34,15 +34,16 @@ if config.config_file_name is not None:
 def _sync_url(url: str) -> str:
     """Normalize the DB URL for Alembic (which runs synchronously).
 
-    Render emits the legacy ``postgres://`` scheme, but SQLAlchemy 2.0 only
-    recognises ``postgresql://`` -- without this coercion ``engine_from_config``
-    raises ``NoSuchModuleError`` and ``alembic upgrade head`` exits non-zero.
-    Also drop async drivers, since Alembic does not run inside the event loop.
+    Delegates Postgres to ``to_sync_pg_url`` so this file and ``config.py``
+    cannot drift: it reads ``$DATABASE_URL`` directly and therefore never
+    passes through the Settings validator. That shared helper also pins the
+    DBAPI to psycopg2 explicitly -- a bare ``postgresql://`` resolves to
+    psycopg (v3) on SQLAlchemy 2.1, which is not a dependency here.
+
+    SQLite keeps its local handling: Alembic does not run inside the event
+    loop, so the async driver must be stripped.
     """
-    if url.startswith("postgres://"):
-        url = "postgresql://" + url[len("postgres://"):]
-    if "+asyncpg" in url:
-        return url.replace("+asyncpg", "")
+    url = to_sync_pg_url(url)
     if "+aiosqlite" in url:
         return url.replace("+aiosqlite", "")
     return url

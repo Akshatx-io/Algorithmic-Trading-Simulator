@@ -29,6 +29,59 @@ from typing import List, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# -----------------------------------------------------------------------------
+# Database URL normalisation
+#
+# The DBAPI is pinned EXPLICITLY rather than left to SQLAlchemy's default.
+#
+# SQLAlchemy 2.1 changed the driver a bare `postgresql://` URL resolves to,
+# from psycopg2 to psycopg (v3). This project depends on psycopg2-binary and
+# not psycopg, so once a rebuild resolved SQLAlchemy 2.1 the sync engine died
+# at import with `ModuleNotFoundError: No module named 'psycopg'` — without a
+# single line of application code having changed. Naming the driver removes
+# that whole class of failure.
+#
+# Both spellings are normalised from one table so `config.py` and
+# `alembic/env.py` cannot drift apart; env.py reads $DATABASE_URL directly and
+# therefore never passes through the Settings validator.
+# -----------------------------------------------------------------------------
+PG_SYNC_PREFIX = "postgresql+psycopg2://"
+PG_ASYNC_PREFIX = "postgresql+asyncpg://"
+
+# Every Postgres spelling we accept on input. `postgres://` is what managed
+# providers (Render, Heroku) hand out; the async form appears when someone
+# sets DATABASE_URL to the value the async engine wants.
+_PG_PREFIXES = (
+    "postgres://",
+    "postgresql://",
+    "postgresql+psycopg://",
+    "postgresql+psycopg2://",
+    "postgresql+asyncpg://",
+)
+
+
+def to_sync_pg_url(url: str) -> str:
+    """Coerce any accepted Postgres spelling to the pinned SYNC driver.
+
+    Non-Postgres URLs (SQLite) pass through untouched.
+    """
+    for prefix in _PG_PREFIXES:
+        if url.startswith(prefix):
+            return PG_SYNC_PREFIX + url[len(prefix):]
+    return url
+
+
+def to_async_pg_url(url: str) -> str:
+    """Coerce any accepted Postgres spelling to the pinned ASYNC driver."""
+    for prefix in _PG_PREFIXES:
+        if url.startswith(prefix):
+            return PG_ASYNC_PREFIX + url[len(prefix):]
+    if url.startswith("sqlite+aiosqlite:///"):
+        return url
+    if url.startswith("sqlite:///"):
+        return "sqlite+aiosqlite:///" + url[len("sqlite:///"):]
+    return url
+
 
 class Settings(BaseSettings):
     # -------------------------------------------------------------------------
@@ -237,13 +290,12 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def _normalize_database_url(cls, v: str) -> str:
-        # Managed providers (Render, Heroku, …) often hand out the legacy
-        # `postgres://` scheme, which SQLAlchemy 2.0 no longer recognizes.
-        # Coerce it to the canonical `postgresql://` so both the sync engine
-        # and `database_url_async` work without manual edits.
-        if v.startswith("postgres://"):
-            return v.replace("postgres://", "postgresql://", 1)
-        return v
+        # `database_url` is the SYNC url: app/core/database.py feeds it straight
+        # into create_engine(), and `database_url_async` derives the async form
+        # from it. Normalising here means a managed provider's `postgres://`,
+        # or someone pasting the `+asyncpg` spelling, both land correctly
+        # instead of failing at first connect.
+        return to_sync_pg_url(v)
 
     # NOTE (audit 5.11): the original config had a `validate_model` field
     # validator that raised if `model_path` didn't exist on disk. That made
@@ -272,12 +324,7 @@ class Settings(BaseSettings):
         Return the database URL coerced to an async driver.
         SQLAlchemy 2.0 async needs `postgresql+asyncpg://` or `sqlite+aiosqlite://`.
         """
-        url = self.database_url
-        if url.startswith("postgresql://"):
-            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        if url.startswith("sqlite:///"):
-            return url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
-        return url
+        return to_async_pg_url(self.database_url)
 
 
 @lru_cache
