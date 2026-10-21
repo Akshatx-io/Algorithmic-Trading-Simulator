@@ -286,7 +286,7 @@ async def root(request: Request):
     }
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 @limiter.limit("30/minute")
 async def health(request: Request):
     """Readiness: is this instance able to serve traffic? Touches the database.
@@ -294,6 +294,8 @@ async def health(request: Request):
     This is the endpoint a load balancer or platform health check should use
     (Render's `healthCheckPath`), because an instance that cannot reach its
     database should be taken out of rotation.
+
+    HEAD is accepted alongside GET -- see the note on /health/live below.
     """
     db_ok = await check_database_connection()
     return {
@@ -304,7 +306,7 @@ async def health(request: Request):
     }
 
 
-@app.get("/health/live")
+@app.api_route("/health/live", methods=["GET", "HEAD"])
 async def liveness():
     """Liveness: is this process alive? No I/O, no rate limit.
 
@@ -314,6 +316,13 @@ async def liveness():
     because the database blipped. Liveness answers "should I be restarted?";
     readiness answers "should I get traffic?". Conflating them means a transient
     database fault kills the very process that would have recovered from it.
+
+    HEAD matters here. Uptime monitors default to it because it is the cheapest
+    possible probe — status line and headers, no response body — and this
+    endpoint exists precisely to be polled. `@app.get` registers GET alone:
+    unlike a plain Starlette Route, FastAPI's APIRoute does NOT infer HEAD from
+    GET, so a HEAD probe got 405 and every monitor reported the service down
+    while it was in fact serving perfectly.
     """
     return {"status": "alive", "version": settings.app_version}
 
